@@ -72,8 +72,9 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     reg.register(ContextInitialize())
     reg.register(InputNormalize())
     reg.register(BaseContextLoadStaticParts(
-        identity=settings.agent.identity,
-        guidance=settings.agent.guidance,
+        identity=settings.resolve_file(settings.agent.identity_file),
+        guidance=settings.resolve_file(settings.agent.guidance_file),
+        workspace_context=settings.resolve_file(settings.agent.workspace_context_file),
         model_config=model_config,
     ))
     reg.register(MemoryPrefetch())

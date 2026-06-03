@@ -26,8 +26,9 @@ class BudgetSettings:
 
 @dataclass
 class AgentSettings:
-    identity: str = "You are L-Agent, an AI coding assistant. Use the available tools to help the user."
-    guidance: str = "Be concise. Think step by step. Use tools when needed."
+    identity_file: str = ""
+    guidance_file: str = ""
+    workspace_context_file: str = ""
 
 
 @dataclass
@@ -35,6 +36,16 @@ class Settings:
     llm: LLMSettings = field(default_factory=LLMSettings)
     budget: BudgetSettings = field(default_factory=BudgetSettings)
     agent: AgentSettings = field(default_factory=AgentSettings)
+    config_dir: Path = field(default_factory=lambda: Path("."))
+
+    def resolve_file(self, relative_path: str) -> str:
+        """Read a file path relative to config directory, return its content."""
+        if not relative_path:
+            return ""
+        p = self.config_dir / relative_path
+        if not p.exists():
+            return ""
+        return p.read_text(encoding="utf-8").strip()
 
 
 DEFAULT_CONFIG_PATHS = [
@@ -51,7 +62,9 @@ def load_settings(config_path: Path | None = None) -> Settings:
     with open(path) as f:
         data = yaml.safe_load(f) or {}
 
-    return _parse(data)
+    settings = _parse(data)
+    settings.config_dir = path.parent
+    return settings
 
 
 def _resolve_path(config_path: Path | None) -> Path | None:
