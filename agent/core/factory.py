@@ -53,7 +53,7 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
 
     if not settings.llm.api_key:
         raise RuntimeError(
-            "llm.api_key is required. Set it in .l-agent/config.yaml or ~/.l-agent/config.yaml"
+            "llm.api_key is required. Set it in workspace/config.yaml or ~/.l-agent/config.yaml"
         )
 
     model_config = ModelConfig(
