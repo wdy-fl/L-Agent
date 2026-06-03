@@ -6,6 +6,7 @@ from agent.core.context import BudgetState, RunContext
 from agent.core.lifecycle import HookPhase
 from agent.llm.types import BaseModelContext, ModelConfig
 from agent.steps.base import Step
+from agent.tools.registry import ToolRegistry
 
 
 class ContextInitialize(Step):
@@ -70,14 +71,19 @@ class MemoryPrefetch(Step):
 
 
 class ToolsSnapshotAvailableTools(Step):
-    """Placeholder: snapshot available tools (real logic in a later step)."""
+    """Snapshot available tools from ToolRegistry into ctx.base_model_context."""
 
-    def __init__(self) -> None:
+    def __init__(self, registry: ToolRegistry | None = None) -> None:
         super().__init__("tools.snapshot_available_tools", HookPhase.before_agent)
+        self._registry = registry
 
     def run(self, ctx: RunContext) -> None:
-        if ctx.base_model_context:
+        if ctx.base_model_context is None:
+            return
+        if self._registry is None:
             ctx.base_model_context.available_tools = []
+        else:
+            ctx.base_model_context.available_tools = self._registry.list_schemas()
 
 
 class BudgetInitialize(Step):

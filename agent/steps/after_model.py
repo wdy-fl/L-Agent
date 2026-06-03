@@ -16,6 +16,34 @@ class ModelCaptureResponse(Step):
         pass
 
 
+class MessageCommitAssistant(Step):
+    """Commit assistant message (with or without tool_calls) to message list."""
+
+    def __init__(self) -> None:
+        super().__init__("message.commit_assistant", HookPhase.after_model)
+
+    def run(self, ctx: RunContext) -> None:
+        resp = ctx.current_model_response
+        if resp is None or not isinstance(resp, ModelResponse):
+            return
+
+        if resp.tool_calls:
+            ctx.messages.append({
+                "role": "assistant",
+                "content": resp.content,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {"name": tc.name, "arguments": tc.arguments},
+                    }
+                    for tc in resp.tool_calls
+                ],
+            })
+        else:
+            ctx.messages.append({"role": "assistant", "content": resp.content})
+
+
 class UsageUpdate(Step):
     """Accumulate token consumption into ctx.budget."""
 
@@ -31,7 +59,7 @@ class UsageUpdate(Step):
 
 
 class ResultDetectFinalAnswer(Step):
-    """If model has no tool_calls, set ctx.final_result and end the loop."""
+    """If model has no tool_calls, set ctx.final_result."""
 
     def __init__(self) -> None:
         super().__init__("result.detect_final_answer", HookPhase.after_model)
@@ -41,21 +69,21 @@ class ResultDetectFinalAnswer(Step):
         if resp is None or not isinstance(resp, ModelResponse):
             return
 
-        if resp.tool_calls:
-            ctx.has_tool_calls = True
-            ctx.messages.append({
-                "role": "assistant",
-                "content": resp.content,
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {"name": tc.name, "arguments": tc.arguments},
-                    }
-                    for tc in resp.tool_calls
-                ],
-            })
-        else:
+        if not resp.tool_calls:
             ctx.has_tool_calls = False
             ctx.final_result = resp.content
-            ctx.messages.append({"role": "assistant", "content": resp.content})
+
+
+class ToolDetectRequested(Step):
+    """If model response has tool_calls, set ctx.has_tool_calls = True."""
+
+    def __init__(self) -> None:
+        super().__init__("tool.detect_requested", HookPhase.after_model)
+
+    def run(self, ctx: RunContext) -> None:
+        resp = ctx.current_model_response
+        if resp is None or not isinstance(resp, ModelResponse):
+            return
+
+        if resp.tool_calls:
+            ctx.has_tool_calls = True

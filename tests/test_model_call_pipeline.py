@@ -14,8 +14,10 @@ from agent.llm.types import (
 from agent.middleware.chain import MiddlewareChain
 from agent.middleware.model import BudgetGuard, TimeoutGuard, TraceRecord
 from agent.steps.after_model import (
+    MessageCommitAssistant,
     ModelCaptureResponse,
     ResultDetectFinalAnswer,
+    ToolDetectRequested,
     UsageUpdate,
 )
 from agent.steps.before_agent import (
@@ -69,8 +71,10 @@ def _build_full_registry(model_config: ModelConfig | None = None) -> StepRegistr
 
     # after_model
     reg.register(ModelCaptureResponse())
+    reg.register(MessageCommitAssistant())
     reg.register(UsageUpdate())
     reg.register(ResultDetectFinalAnswer())
+    reg.register(ToolDetectRequested())
 
     return reg
 
@@ -265,8 +269,10 @@ class TestBudgetGuard:
         reg.register(ContextPrepareWithBudget())
         reg.register(ModelRequestCompose())
         reg.register(ModelCaptureResponse())
+        reg.register(MessageCommitAssistant())
         reg.register(UsageUpdate())
         reg.register(ResultDetectFinalAnswer())
+        reg.register(ToolDetectRequested())
 
         chain = MiddlewareChain()
         chain.add(BudgetGuard())
