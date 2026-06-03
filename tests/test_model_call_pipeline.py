@@ -90,7 +90,7 @@ def _build_middleware_chain() -> MiddlewareChain:
 class TestIntegrationFullLifecycle:
     """Task 2.23: Input → full lifecycle → LLM → output."""
 
-    def test_simple_conversation_returns_response(self):
+    async def test_simple_conversation_returns_response(self):
         fake_response = ModelResponse(
             content="Hello! How can I help you?",
             tool_calls=[],
@@ -109,7 +109,7 @@ class TestIntegrationFullLifecycle:
         )
 
         ctx = RunContext(input="  Hello world  ")
-        result = runner.run(ctx)
+        result = await runner.run_to_completion(ctx)
 
         assert result.status == "completed"
         assert result.final_result == "Hello! How can I help you?"
@@ -120,7 +120,7 @@ class TestIntegrationFullLifecycle:
         assert result.budget.consumed_input_tokens == 20
         assert result.budget.consumed_output_tokens == 10
 
-    def test_base_model_context_built_once(self):
+    async def test_base_model_context_built_once(self):
         fake_response = ModelResponse(
             content="Done",
             usage=Usage(input_tokens=5, output_tokens=5),
@@ -136,14 +136,14 @@ class TestIntegrationFullLifecycle:
         )
 
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.base_model_context is not None
         assert ctx.base_model_context.identity == "You are a helpful assistant."
         assert ctx.base_model_context.memory_context is None
         assert ctx.base_model_context.available_tools == []
 
-    def test_model_request_rebuilt_each_iteration(self):
+    async def test_model_request_rebuilt_each_iteration(self):
         """With tool calls, model_request should be rebuilt on second iteration."""
         call_count = [0]
         responses = [
@@ -181,14 +181,14 @@ class TestIntegrationFullLifecycle:
 
         ctx = RunContext(input="test")
 
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.iteration_index == 2
         assert ctx.final_result == "Final answer"
         assert ctx.budget.consumed_input_tokens == 25
         assert ctx.budget.consumed_output_tokens == 13
 
-    def test_no_tool_calls_single_iteration(self):
+    async def test_no_tool_calls_single_iteration(self):
         fake_response = ModelResponse(
             content="Simple reply",
             tool_calls=[],
@@ -206,7 +206,7 @@ class TestIntegrationFullLifecycle:
         )
 
         ctx = RunContext(input="hi")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.iteration_index == 1
         assert ctx.has_tool_calls is False
@@ -217,7 +217,7 @@ class TestIntegrationFullLifecycle:
 class TestBudgetGuard:
     """Task 2.24: budget.guard blocks calls when over limit."""
 
-    def test_iteration_limit_blocks_call(self):
+    async def test_iteration_limit_blocks_call(self):
         fake_response = ModelResponse(content="should not reach")
         client = FakeLLMClient(fake_response)
         registry = _build_full_registry()
@@ -235,12 +235,12 @@ class TestBudgetGuard:
         ctx.budget.max_iterations = 2
 
         # Simulate being at iteration 3 already consumed
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
         # With max_iterations=2, the budget guard stops at iteration 3
         assert ctx.iteration_index <= 3
         assert ctx.status == "completed" or ctx.budget.exhausted
 
-    def test_token_limit_blocks_call(self):
+    async def test_token_limit_blocks_call(self):
         """When token budget is pre-exhausted, budget.guard blocks the model call."""
         call_count = [0]
 
@@ -285,7 +285,7 @@ class TestBudgetGuard:
         )
 
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         # First call uses 110k tokens total (80k+30k), exceeding 100k budget.
         # After first call, usage.update sets consumed=110k.
@@ -298,7 +298,7 @@ class TestBudgetGuard:
 class TestTimeoutGuard:
     """Task 2.25: timeout.guard interrupts on timeout."""
 
-    def test_timeout_raises_on_slow_call(self):
+    async def test_timeout_raises_on_slow_call(self):
         import time
 
         class SlowClient(LLMClient):
@@ -319,12 +319,12 @@ class TestTimeoutGuard:
         )
 
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert len(ctx.errors) == 1
         assert isinstance(ctx.errors[0], TimeoutError)
 
-    def test_no_timeout_on_fast_call(self):
+    async def test_no_timeout_on_fast_call(self):
         fake_response = ModelResponse(
             content="fast response",
             usage=Usage(input_tokens=5, output_tokens=5),
@@ -343,7 +343,7 @@ class TestTimeoutGuard:
         )
 
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.final_result == "fast response"
         assert len(ctx.errors) == 0
@@ -352,7 +352,7 @@ class TestTimeoutGuard:
 class TestTraceRecord:
     """trace.record correctly records usage and timing."""
 
-    def test_records_duration_and_usage(self):
+    async def test_records_duration_and_usage(self):
         fake_response = ModelResponse(
             content="traced",
             usage=Usage(input_tokens=100, output_tokens=50),
@@ -370,7 +370,7 @@ class TestTraceRecord:
         )
 
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert len(ctx.iterations) == 1
         iteration = ctx.iterations[0]

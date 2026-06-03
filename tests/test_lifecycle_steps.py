@@ -27,7 +27,7 @@ def _make_runner(registry: StepRegistry, model_call=None, tool_call=None):
 
 
 class TestPhaseExecutionOrder:
-    def test_no_tool_calls_phase_order(self):
+    async def test_no_tool_calls_phase_order(self):
         """Without tool_calls, should skip before_tool/tool_call/after_tool."""
         log: list[str] = []
         reg = StepRegistry()
@@ -41,7 +41,7 @@ class TestPhaseExecutionOrder:
 
         runner = _make_runner(reg, model_call=model_call)
         ctx = RunContext(input="hello")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert log == [
             "before_agent:s_before_agent",
@@ -51,7 +51,7 @@ class TestPhaseExecutionOrder:
             "after_agent:s_after_agent",
         ]
 
-    def test_with_tool_calls_phase_order(self):
+    async def test_with_tool_calls_phase_order(self):
         """With tool_calls, should execute full cycle then loop back."""
         log: list[str] = []
         reg = StepRegistry()
@@ -75,7 +75,7 @@ class TestPhaseExecutionOrder:
 
         runner = _make_runner(reg, model_call=model_call, tool_call=tool_call)
         ctx = RunContext(input="hello")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert log == [
             "before_agent:s_before_agent",
@@ -94,7 +94,7 @@ class TestPhaseExecutionOrder:
             "after_agent:s_after_agent",
         ]
 
-    def test_step_priority_order(self):
+    async def test_step_priority_order(self):
         """Steps within a phase should execute in priority order."""
         log: list[str] = []
         reg = StepRegistry()
@@ -115,7 +115,7 @@ class TestPhaseExecutionOrder:
 
         runner = _make_runner(reg)
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         before_agent_entries = [e for e in log if e.startswith("before_agent")]
         assert before_agent_entries == [
@@ -124,7 +124,7 @@ class TestPhaseExecutionOrder:
             "before_agent:low",
         ]
 
-    def test_disabled_step_skipped(self):
+    async def test_disabled_step_skipped(self):
         """Disabled steps should not execute."""
         log: list[str] = []
         reg = StepRegistry()
@@ -134,7 +134,7 @@ class TestPhaseExecutionOrder:
 
         runner = _make_runner(reg)
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         before_agent_entries = [e for e in log if e.startswith("before_agent")]
         assert before_agent_entries == ["before_agent:active"]

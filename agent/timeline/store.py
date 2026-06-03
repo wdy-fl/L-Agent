@@ -23,6 +23,9 @@ class TimelineStore(ABC):
     @abstractmethod
     def update_session(self, session: Session) -> None: ...
 
+    @abstractmethod
+    def list_sessions(self) -> list[Session]: ...
+
     # --- Branch ---
     @abstractmethod
     def create_branch(self, branch: Branch) -> None: ...

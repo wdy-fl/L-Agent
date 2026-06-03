@@ -205,7 +205,7 @@ class TestToolDispatcher:
 class TestSingleRoundToolCall:
     """Task 3.23: Single tool call → final answer."""
 
-    def test_think_tool_then_answer(self):
+    async def test_think_tool_then_answer(self):
         responses = [
             ModelResponse(
                 content="",
@@ -245,7 +245,7 @@ class TestSingleRoundToolCall:
         )
 
         ctx = RunContext(input="What is the meaning of life?")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.status == "completed"
         assert ctx.final_result == "The answer is 42."
@@ -262,7 +262,7 @@ class TestSingleRoundToolCall:
 class TestMultiRoundToolCall:
     """Task 3.24: Multiple tool calls → final answer."""
 
-    def test_two_think_calls_then_answer(self):
+    async def test_two_think_calls_then_answer(self):
         responses = [
             ModelResponse(
                 content="",
@@ -312,7 +312,7 @@ class TestMultiRoundToolCall:
         )
 
         ctx = RunContext(input="Analyze this problem")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.status == "completed"
         assert ctx.final_result == "Based on my analysis: the result is Z."
@@ -322,7 +322,7 @@ class TestMultiRoundToolCall:
         tool_messages = [m for m in ctx.messages if m.get("role") == "tool"]
         assert len(tool_messages) == 2
 
-    def test_multiple_tool_calls_in_single_response(self):
+    async def test_multiple_tool_calls_in_single_response(self):
         """Model requests multiple tools in one response (serial execution)."""
         responses = [
             ModelResponse(
@@ -362,7 +362,7 @@ class TestMultiRoundToolCall:
         )
 
         ctx = RunContext(input="Do both things")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.status == "completed"
         assert ctx.final_result == "Done"
@@ -375,7 +375,7 @@ class TestMultiRoundToolCall:
 class TestApprovalDenied:
     """Task 3.25: Approval denied → denied result → model continues."""
 
-    def test_denied_tool_generates_denied_result(self):
+    async def test_denied_tool_generates_denied_result(self):
         """When approval.guard denies a call, model gets denied result and continues."""
         responses = [
             ModelResponse(
@@ -447,7 +447,7 @@ class TestApprovalDenied:
         )
 
         ctx = RunContext(input="Do something")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.status == "completed"
         assert ctx.final_result == "I'll proceed differently."
@@ -460,7 +460,7 @@ class TestApprovalDenied:
 class TestToolErrors:
     """Task 3.26: Tool not found / argument validation → error result."""
 
-    def test_unknown_tool_produces_error_result(self):
+    async def test_unknown_tool_produces_error_result(self):
         responses = [
             ModelResponse(
                 content="",
@@ -500,7 +500,7 @@ class TestToolErrors:
         )
 
         ctx = RunContext(input="Use nonexistent tool")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.status == "completed"
         assert ctx.final_result == "I see that tool is not available."
@@ -508,7 +508,7 @@ class TestToolErrors:
         assert len(tool_messages) == 1
         assert "[ERROR]" in tool_messages[0]["content"]
 
-    def test_invalid_arguments_produces_error_result(self):
+    async def test_invalid_arguments_produces_error_result(self):
         responses = [
             ModelResponse(
                 content="",
@@ -548,7 +548,7 @@ class TestToolErrors:
         )
 
         ctx = RunContext(input="Call with bad args")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.status == "completed"
         assert ctx.final_result == "Let me try again differently."
@@ -556,7 +556,7 @@ class TestToolErrors:
         assert len(tool_messages) == 1
         assert "[ERROR]" in tool_messages[0]["content"]
 
-    def test_missing_required_param_produces_error_result(self):
+    async def test_missing_required_param_produces_error_result(self):
         """Think tool requires 'thought' param — calling without it gives error."""
         responses = [
             ModelResponse(
@@ -597,7 +597,7 @@ class TestToolErrors:
         )
 
         ctx = RunContext(input="Call without required param")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.status == "completed"
         tool_messages = [m for m in ctx.messages if m.get("role") == "tool"]
@@ -609,7 +609,7 @@ class TestToolErrors:
 class TestResultLimitGuard:
     """Test result_limit.guard truncation."""
 
-    def test_long_result_gets_truncated(self):
+    async def test_long_result_gets_truncated(self):
         def verbose_handler(**kwargs):
             return "x" * 100_000
 
@@ -655,7 +655,7 @@ class TestResultLimitGuard:
         )
 
         ctx = RunContext(input="Run verbose tool")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.status == "completed"
         tool_messages = [m for m in ctx.messages if m.get("role") == "tool"]
@@ -667,7 +667,7 @@ class TestResultLimitGuard:
 class TestSnapshotAvailableTools:
     """Test tools.snapshot_available_tools real logic."""
 
-    def test_snapshot_populates_available_tools(self):
+    async def test_snapshot_populates_available_tools(self):
         tool_registry = _build_tool_registry()
         step_registry = _build_full_registry(tool_registry)
         chain = _build_middleware_chain()
@@ -689,13 +689,13 @@ class TestSnapshotAvailableTools:
         )
 
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.base_model_context is not None
         assert len(ctx.base_model_context.available_tools) == 1
         assert ctx.base_model_context.available_tools[0]["function"]["name"] == "think"
 
-    def test_model_request_includes_tools(self):
+    async def test_model_request_includes_tools(self):
         """ModelRequest should include tool schemas from snapshot."""
         tool_registry = _build_tool_registry()
         step_registry = _build_full_registry(tool_registry)
@@ -719,7 +719,7 @@ class TestSnapshotAvailableTools:
         )
 
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert captured_request[0] is not None
         assert len(captured_request[0].tools) == 1
@@ -729,7 +729,7 @@ class TestSnapshotAvailableTools:
 class TestReActLoopMessages:
     """Task 3.22: Verify messages accumulate correctly across ReAct rounds."""
 
-    def test_messages_visible_across_rounds(self):
+    async def test_messages_visible_across_rounds(self):
         captured_messages = []
         responses = [
             ModelResponse(
@@ -771,7 +771,7 @@ class TestReActLoopMessages:
         )
 
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         # Second call should see: system + user + assistant(tool_calls) + tool_result
         second_call_messages = captured_messages[1]

@@ -51,7 +51,7 @@ def _build_full_registry() -> StepRegistry:
 
 
 class TestFullAgentRunPersistence:
-    def test_complete_run_persists_all_records(self):
+    async def test_complete_run_persists_all_records(self):
         """A full run with one tool call creates session/branch/run/messages/checkpoints."""
         store, ctx = _make_store_and_ctx("what time is it?")
         reg = _build_full_registry()
@@ -71,7 +71,7 @@ class TestFullAgentRunPersistence:
             return [ToolResult(call_id="tc1", content="15:00")]
 
         runner = AgentRunner(registry=reg, middleware_chain=MiddlewareChain(), model_call=model_call, tool_call=tool_call)
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert ctx.status == "completed"
         run = store.get_run(ctx.run_id)
@@ -90,7 +90,7 @@ class TestFullAgentRunPersistence:
 
 
 class TestMessageSequence:
-    def test_sequence_increments_correctly(self):
+    async def test_sequence_increments_correctly(self):
         """Messages have strictly incrementing sequence numbers with no gaps."""
         store, ctx = _make_store_and_ctx("hi")
         reg = _build_full_registry()
@@ -99,7 +99,7 @@ class TestMessageSequence:
             return ModelResponse(content="hello!", usage=Usage(input_tokens=5, output_tokens=3))
 
         runner = AgentRunner(registry=reg, middleware_chain=MiddlewareChain(), model_call=model_call)
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         msgs = store.get_messages_by_branch(ctx.branch_id)
         sequences = [m.sequence for m in msgs]
@@ -107,7 +107,7 @@ class TestMessageSequence:
 
 
 class TestCheckpointCursor:
-    def test_user_snapshot_cursor_points_to_user_message(self):
+    async def test_user_snapshot_cursor_points_to_user_message(self):
         """user_message_committed checkpoint cursor equals user message sequence."""
         store, ctx = _make_store_and_ctx("test input")
         reg = _build_full_registry()
@@ -116,7 +116,7 @@ class TestCheckpointCursor:
             return ModelResponse(content="ok", usage=Usage(input_tokens=5, output_tokens=2))
 
         runner = AgentRunner(registry=reg, middleware_chain=MiddlewareChain(), model_call=model_call)
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         checkpoints = store.get_checkpoints_by_branch(ctx.branch_id)
         user_cp = [cp for cp in checkpoints if cp.name == "user_message_committed"][0]
@@ -126,7 +126,7 @@ class TestCheckpointCursor:
 
 
 class TestRuntimeCheckpoints:
-    def test_runtime_checkpoints_recorded_for_actions(self):
+    async def test_runtime_checkpoints_recorded_for_actions(self):
         """model_call_started/completed and tool_call_started/completed are recorded."""
         store, ctx = _make_store_and_ctx("do something")
         reg = _build_full_registry()
@@ -146,7 +146,7 @@ class TestRuntimeCheckpoints:
             return [ToolResult(call_id="tc1", content="result")]
 
         runner = AgentRunner(registry=reg, middleware_chain=MiddlewareChain(), model_call=model_call, tool_call=tool_call)
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         checkpoints = store.get_checkpoints_by_branch(ctx.branch_id)
         names = [cp.name for cp in checkpoints]

@@ -1,5 +1,7 @@
 """Tests for AgentRunner: tool_calls branching, exceptions, and interrupts."""
 
+import pytest
+
 from agent.core.context import RunContext
 from agent.core.lifecycle import HookPhase
 from agent.core.runner import AgentRunner
@@ -27,7 +29,7 @@ def _make_runner(registry: StepRegistry, model_call=None, tool_call=None):
 
 
 class TestToolCallsBranching:
-    def test_has_tool_calls_true_enters_tool_phase(self):
+    async def test_has_tool_calls_true_enters_tool_phase(self):
         """When has_tool_calls is True, before_tool/tool_call/after_tool execute."""
         log: list[str] = []
         reg = StepRegistry()
@@ -50,13 +52,13 @@ class TestToolCallsBranching:
 
         runner = _make_runner(reg, model_call=model_call, tool_call=tool_call)
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert "before_tool:bt" in log
         assert "tool_executed" in log
         assert "after_tool:at" in log
 
-    def test_has_tool_calls_false_skips_tool_phase(self):
+    async def test_has_tool_calls_false_skips_tool_phase(self):
         """When has_tool_calls is False, tool phases never execute."""
         log: list[str] = []
         reg = StepRegistry()
@@ -69,14 +71,14 @@ class TestToolCallsBranching:
 
         runner = _make_runner(reg, model_call=model_call)
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert "before_tool:bt" not in log
         assert "after_tool:at" not in log
 
 
 class TestExceptionHandling:
-    def test_exception_in_model_call_enters_after_agent(self):
+    async def test_exception_in_model_call_enters_after_agent(self):
         """If model_call raises, after_agent still runs."""
         log: list[str] = []
         reg = StepRegistry()
@@ -87,13 +89,13 @@ class TestExceptionHandling:
 
         runner = _make_runner(reg, model_call=model_call)
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert "after_agent:aa" in log
         assert len(ctx.errors) == 1
         assert "model failed" in str(ctx.errors[0])
 
-    def test_exception_in_step_enters_after_agent(self):
+    async def test_exception_in_step_enters_after_agent(self):
         """If a step raises, after_agent still runs."""
         log: list[str] = []
         reg = StepRegistry()
@@ -107,13 +109,13 @@ class TestExceptionHandling:
 
         runner = _make_runner(reg)
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert "after_agent:aa" in log
         assert len(ctx.errors) == 1
         assert "step failed" in str(ctx.errors[0])
 
-    def test_interrupted_exits_loop(self):
+    async def test_interrupted_exits_loop(self):
         """Setting interrupted=True should stop the ReAct loop."""
         log: list[str] = []
         reg = StepRegistry()
@@ -132,12 +134,12 @@ class TestExceptionHandling:
 
         runner = _make_runner(reg, model_call=model_call, tool_call=tool_call)
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert call_count[0] == 1
         assert "after_agent:aa" in log
 
-    def test_iterations_count(self):
+    async def test_iterations_count(self):
         """model_call should be invoked once per loop iteration."""
         call_count = [0]
 
@@ -151,6 +153,6 @@ class TestExceptionHandling:
 
         runner = _make_runner(StepRegistry(), model_call=model_call, tool_call=lambda ctx: None)
         ctx = RunContext(input="test")
-        runner.run(ctx)
+        await runner.run_to_completion(ctx)
 
         assert call_count[0] == 3

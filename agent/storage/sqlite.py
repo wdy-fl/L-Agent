@@ -62,6 +62,19 @@ class SQLiteTimelineStore(TimelineStore):
         )
         self._conn.commit()
 
+    def list_sessions(self) -> list[Session]:
+        rows = self._conn.execute("SELECT * FROM sessions ORDER BY updated_at DESC").fetchall()
+        return [
+            Session(
+                session_id=row["session_id"], title=row["title"],
+                active_branch_id=row["active_branch_id"],
+                created_at=_str_to_dt(row["created_at"]),
+                updated_at=_str_to_dt(row["updated_at"]),
+                metadata=json.loads(row["metadata"]),
+            )
+            for row in rows
+        ]
+
     # --- Branch ---
     def create_branch(self, branch: Branch) -> None:
         self._conn.execute(
