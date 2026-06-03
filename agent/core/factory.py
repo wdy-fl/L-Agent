@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agent.actions.model_call import make_llm_call_action
+from agent.actions.model_call import make_llm_call_action, make_llm_stream_action
 from agent.actions.tool_call import make_tool_call_action
 from agent.config.settings import Settings, load_settings
 from agent.core.runner import AgentRunner
@@ -116,4 +116,5 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
         middleware_chain=chain,
         model_call=make_llm_call_action(client),
         tool_call=make_tool_call_action(dispatcher),
+        model_stream=make_llm_stream_action(client),
     )

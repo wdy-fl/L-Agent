@@ -35,7 +35,7 @@ from agent.steps.registry import StepRegistry  # noqa: F401
 from agent.storage.sqlite import SQLiteTimelineStore
 from agent.timeline.resume import resume
 from agent.timeline.session_factory import create_session_with_default_branch
-from agent.tools.builtin import AUTO_APPROVE_TOOLS
+from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS
 
 app = typer.Typer(add_completion=False)
 console = Console()
@@ -57,7 +57,9 @@ class CLISession:
 
         config = load_approval_config(config_path)
         auto_approve = set(config.auto_approve) | AUTO_APPROVE_TOOLS
+        always_confirm = set(config.always_confirm) | ALWAYS_CONFIRM_TOOLS
         self._approval = ApprovalHandler(console, auto_approve=auto_approve)
+        self._always_confirm = always_confirm
         self._commands = CommandDispatcher(store, console)
 
         self._session_id: str = ""
@@ -119,6 +121,8 @@ class CLISession:
             session_id=self._session_id,
             branch_id=self._branch_id,
             timeline_store=self._store,
+            auto_approve_tools=self._approval._auto_approve,
+            always_confirm_tools=self._always_confirm,
         )
 
         start_time = time.time()

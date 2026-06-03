@@ -2,6 +2,16 @@
 name = "l-agent"
 version = "0.1.0"
 requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "typer>=0.12",
+    "rich>=13.0",
+    "prompt-toolkit>=3.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+l-agent = "agent.cli.app:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
