@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any, Callable
 
 from agent.core.context import RunContext
 from agent.core.lifecycle import ActionName, HookPhase
 from agent.middleware.chain import MiddlewareChain
 from agent.steps.registry import StepRegistry
+from agent.timeline.models import Checkpoint, CheckpointKind
 
 
 class AgentRunner:
@@ -78,7 +80,21 @@ class AgentRunner:
             raise exc
 
     def _record_checkpoint(self, action: ActionName, status: str, ctx: RunContext) -> None:
-        pass
+        store = ctx.timeline_store
+        if store is None:
+            return
+        name = f"{action.value}_{status}"
+        cursor = store.get_latest_sequence(ctx.branch_id)
+        cp = Checkpoint(
+            checkpoint_id=str(uuid.uuid4()),
+            session_id=ctx.session_id,
+            branch_id=ctx.branch_id,
+            run_id=ctx.run_id,
+            kind=CheckpointKind.runtime,
+            name=name,
+            message_cursor=cursor,
+        )
+        store.create_checkpoint(cp)
 
     @staticmethod
     def _noop_model_call(ctx: RunContext) -> Any:

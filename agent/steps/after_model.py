@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import uuid
+
 from agent.core.context import RunContext
 from agent.core.lifecycle import HookPhase
 from agent.llm.types import ModelResponse
 from agent.steps.base import Step
+from agent.timeline.models import Message
 
 
 class ModelCaptureResponse(Step):
@@ -27,21 +30,31 @@ class MessageCommitAssistant(Step):
         if resp is None or not isinstance(resp, ModelResponse):
             return
 
+        tool_calls_data: list[dict] = []
         if resp.tool_calls:
-            ctx.messages.append({
-                "role": "assistant",
-                "content": resp.content,
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {"name": tc.name, "arguments": tc.arguments},
-                    }
-                    for tc in resp.tool_calls
-                ],
-            })
+            tool_calls_data = [
+                {"id": tc.id, "type": "function", "function": {"name": tc.name, "arguments": tc.arguments}}
+                for tc in resp.tool_calls
+            ]
+            ctx.messages.append({"role": "assistant", "content": resp.content, "tool_calls": tool_calls_data})
         else:
             ctx.messages.append({"role": "assistant", "content": resp.content})
+
+        store = ctx.timeline_store
+        if store is None:
+            return
+        seq = store.get_latest_sequence(ctx.branch_id) + 1
+        msg = Message(
+            message_id=str(uuid.uuid4()),
+            session_id=ctx.session_id,
+            branch_id=ctx.branch_id,
+            run_id=ctx.run_id,
+            sequence=seq,
+            role="assistant",
+            content=resp.content,
+            tool_calls=tool_calls_data,
+        )
+        store.append_message(msg)
 
 
 class UsageUpdate(Step):

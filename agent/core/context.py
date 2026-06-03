@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agent.llm.types import BaseModelContext, ModelRequest, ModelResponse
+
+if TYPE_CHECKING:
+    from agent.timeline.store import TimelineStore
 
 
 @dataclass
@@ -56,3 +59,6 @@ class RunContext:
     # --- result ---
     final_result: Any = None
     status: str = "running"
+
+    # --- timeline store ---
+    timeline_store: TimelineStore | None = None
