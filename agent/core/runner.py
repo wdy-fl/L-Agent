@@ -27,23 +27,28 @@ class AgentRunner:
         try:
             self._run_phase(HookPhase.before_agent, ctx)
             self._react_loop(ctx)
+            if not ctx.errors:
+                ctx.status = "completed"
         except Exception as exc:
             ctx.errors.append(exc)
+            ctx.status = "failed"
         finally:
             self._run_phase(HookPhase.after_agent, ctx)
         return ctx
 
     def _react_loop(self, ctx: RunContext) -> None:
         while True:
-            if ctx.interrupted:
+            if ctx.interrupted or ctx.budget.exhausted:
                 break
 
-            ctx.iterations += 1
             self._run_phase(HookPhase.before_model, ctx)
 
             self._execute_action(ActionName.model_call, ctx, self._model_call)
 
             self._run_phase(HookPhase.after_model, ctx)
+
+            if ctx.final_result is not None and not ctx.has_tool_calls:
+                break
 
             if ctx.has_tool_calls:
                 self._run_phase(HookPhase.before_tool, ctx)

@@ -3,6 +3,24 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from agent.llm.types import BaseModelContext, ModelRequest, ModelResponse
+
+
+@dataclass
+class BudgetState:
+    """Tracks budget consumption for the current run."""
+
+    max_iterations: int = 25
+    max_tokens: int = 200_000
+    consumed_iterations: int = 0
+    consumed_input_tokens: int = 0
+    consumed_output_tokens: int = 0
+    exhausted: bool = False
+
+    @property
+    def consumed_total_tokens(self) -> int:
+        return self.consumed_input_tokens + self.consumed_output_tokens
+
 
 @dataclass
 class RunContext:
@@ -13,19 +31,28 @@ class RunContext:
     branch_id: str = ""
     run_id: str = ""
     input: str = ""
-    iterations: int = 0
+    raw_input: str = ""
+    iteration_index: int = 0
+    iterations: list[dict[str, Any]] = field(default_factory=list)
     errors: list[Exception] = field(default_factory=list)
     interrupted: bool = False
 
-    # --- model placeholders ---
-    base_model_context: Any = None
-    current_model_request: Any = None
-    current_model_response: Any = None
+    # --- messages ---
+    messages: list[dict[str, Any]] = field(default_factory=list)
 
-    # --- tool placeholders ---
+    # --- model context ---
+    base_model_context: BaseModelContext | None = None
+    current_model_request: ModelRequest | None = None
+    current_model_response: ModelResponse | None = None
+
+    # --- tool ---
     current_tool_plan: Any = None
     current_tool_results: Any = None
+    has_tool_calls: bool = False
+
+    # --- budget ---
+    budget: BudgetState = field(default_factory=BudgetState)
 
     # --- result ---
     final_result: Any = None
-    has_tool_calls: bool = False
+    status: str = "running"

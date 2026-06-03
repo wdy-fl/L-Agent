@@ -138,7 +138,7 @@ class TestExceptionHandling:
         assert "after_agent:aa" in log
 
     def test_iterations_count(self):
-        """iterations should increment once per loop iteration."""
+        """model_call should be invoked once per loop iteration."""
         call_count = [0]
 
         def model_call(ctx: RunContext):
@@ -153,4 +153,4 @@ class TestExceptionHandling:
         ctx = RunContext(input="test")
         runner.run(ctx)
 
-        assert ctx.iterations == 3
+        assert call_count[0] == 3

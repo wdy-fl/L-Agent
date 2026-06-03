@@ -1,0 +1,94 @@
+from __future__ import annotations
+
+from typing import Any
+
+from agent.core.context import RunContext
+from agent.core.lifecycle import HookPhase
+from agent.llm.types import ModelRequest
+from agent.steps.base import Step
+
+
+class IterationCreate(Step):
+    """Increment iteration_index and record in ctx.iterations."""
+
+    def __init__(self) -> None:
+        super().__init__("iteration.create", HookPhase.before_model)
+
+    def run(self, ctx: RunContext) -> None:
+        ctx.iteration_index += 1
+        ctx.iterations.append({
+            "index": ctx.iteration_index,
+            "status": "started",
+        })
+        ctx.budget.consumed_iterations += 1
+
+
+class MessagesCollectVisible(Step):
+    """Collect visible messages for this iteration's model call."""
+
+    def __init__(self) -> None:
+        super().__init__("messages.collect_visible", HookPhase.before_model)
+
+    def run(self, ctx: RunContext) -> None:
+        if not ctx.messages:
+            ctx.messages = [{"role": "user", "content": ctx.input}]
+
+
+class ContextPrepareWithBudget(Step):
+    """Check message token count; truncate oldest if over window (simple v1)."""
+
+    def __init__(self, max_context_tokens: int = 128_000) -> None:
+        super().__init__("context.prepare_with_budget", HookPhase.before_model)
+        self._max_context_tokens = max_context_tokens
+
+    def run(self, ctx: RunContext) -> None:
+        estimated = self._estimate_tokens(ctx.messages)
+        while estimated > self._max_context_tokens and len(ctx.messages) > 1:
+            ctx.messages.pop(0)
+            estimated = self._estimate_tokens(ctx.messages)
+
+    def _estimate_tokens(self, messages: list[dict[str, Any]]) -> int:
+        total = 0
+        for msg in messages:
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                total += len(content) // 4
+            else:
+                total += 100
+        return total
+
+
+class ModelRequestCompose(Step):
+    """Merge base_model_context + visible messages + params → ModelRequest."""
+
+    def __init__(self) -> None:
+        super().__init__("model_request.compose", HookPhase.before_model)
+
+    def run(self, ctx: RunContext) -> None:
+        base = ctx.base_model_context
+        if base is None:
+            ctx.current_model_request = ModelRequest(messages=ctx.messages)
+            return
+
+        system_parts: list[str] = []
+        if base.identity:
+            system_parts.append(base.identity)
+        if base.guidance:
+            system_parts.append(base.guidance)
+        if base.workspace_context:
+            system_parts.append(base.workspace_context)
+        if base.memory_context:
+            system_parts.append(base.memory_context)
+
+        messages: list[dict[str, Any]] = []
+        if system_parts:
+            messages.append({"role": "system", "content": "\n\n".join(system_parts)})
+        messages.extend(ctx.messages)
+
+        ctx.current_model_request = ModelRequest(
+            messages=messages,
+            tools=base.available_tools,
+            model=base.model_config.model,
+            temperature=base.model_config.temperature,
+            max_tokens=base.model_config.max_tokens,
+        )
