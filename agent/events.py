@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
-from agent.llm.types import ModelResponse
+from agent.core.context import ModelResponse
 
 
 @dataclass(frozen=True)

@@ -9,7 +9,7 @@ from agent.actions.tool_call import make_tool_call_action
 from agent.config.settings import Settings, load_settings
 from agent.core.runner import AgentRunner
 from agent.llm.client import OpenAICompatibleClient
-from agent.llm.types import ModelConfig
+from agent.core.context import ModelConfig
 from agent.middleware.chain import MiddlewareChain
 from agent.middleware.model import BudgetGuard, TraceRecord
 from agent.middleware.tool import ApprovalGuard, AuditRecord, ResultLimitGuard
@@ -25,8 +25,8 @@ from agent.steps.before_agent import (
     BaseContextLoadStaticParts,
     BudgetInitialize,
     ContextInitialize,
-    InputNormalize,
     MemoryPrefetch,
+    RunCreate,
     ToolsSnapshotAvailableTools,
 )
 from agent.steps.before_model import (
@@ -69,8 +69,8 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     dispatcher = ToolDispatcher(tool_registry)
 
     reg = StepRegistry()
+    reg.register(RunCreate())
     reg.register(ContextInitialize())
-    reg.register(InputNormalize())
     reg.register(BaseContextLoadStaticParts(
         identity=settings.resolve_file(settings.agent.identity_file),
         guidance=settings.resolve_file(settings.agent.guidance_file),

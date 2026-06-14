@@ -4,10 +4,26 @@ import uuid
 
 from agent.core.context import BudgetState, RunContext
 from agent.core.lifecycle import HookPhase
-from agent.llm.types import BaseModelContext, ModelConfig
+from agent.core.context import BaseModelContext, ModelConfig
 from agent.steps.base import Step
-from agent.timeline.models import AgentRun, Checkpoint, CheckpointKind, Message
+from agent.timeline.models import AgentRun, Checkpoint, CheckpointKind, Message, RunStatus
 from agent.tools.registry import ToolRegistry
+
+
+class RunCreate(Step):
+    """Write AgentRun record to TimelineStore (status=running)."""
+
+    def __init__(self) -> None:
+        super().__init__("run.create", HookPhase.before_agent)
+
+    def run(self, ctx: RunContext) -> None:
+        store = ctx.timeline_store
+        if store is None:
+            return
+        ctx.run_id = str(uuid.uuid4())
+        run = AgentRun(run_id=ctx.run_id, session_id=ctx.session_id, branch_id=ctx.branch_id, status=RunStatus.running)
+        store.create_run(run)
+        ctx.status = "running"
 
 
 class ContextInitialize(Step):
@@ -17,22 +33,8 @@ class ContextInitialize(Step):
         super().__init__("context.initialize", HookPhase.before_agent)
 
     def run(self, ctx: RunContext) -> None:
-        if not ctx.run_id:
-            ctx.run_id = str(uuid.uuid4())
         ctx.iterations = []
         ctx.iteration_index = 0
-        ctx.status = "running"
-
-
-class InputNormalize(Step):
-    """Normalize user input: strip whitespace, record raw input."""
-
-    def __init__(self) -> None:
-        super().__init__("input.normalize", HookPhase.before_agent)
-
-    def run(self, ctx: RunContext) -> None:
-        ctx.raw_input = ctx.input
-        ctx.input = ctx.input.strip()
 
 
 class BaseContextLoadStaticParts(Step):
@@ -104,20 +106,6 @@ class BudgetInitialize(Step):
             max_iterations=self._max_iterations,
             max_tokens=self._max_tokens,
         )
-
-
-class RunCreate(Step):
-    """Write AgentRun record to TimelineStore (status=running)."""
-
-    def __init__(self) -> None:
-        super().__init__("run.create", HookPhase.before_agent)
-
-    def run(self, ctx: RunContext) -> None:
-        store = ctx.timeline_store
-        if store is None:
-            return
-        run = AgentRun(run_id=ctx.run_id, session_id=ctx.session_id, branch_id=ctx.branch_id)
-        store.create_run(run)
 
 
 class MessageCommitUser(Step):

@@ -4,7 +4,7 @@ from agent.actions.model_call import make_llm_call_action
 from agent.core.context import RunContext
 from agent.core.runner import AgentRunner
 from agent.llm.client import LLMClient
-from agent.llm.types import (
+from agent.core.context import (
     ModelConfig,
     ModelRequest,
     ModelResponse,

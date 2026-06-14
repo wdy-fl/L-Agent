@@ -19,7 +19,7 @@ from agent.events import (
     ToolDone,
     ToolStart,
 )
-from agent.llm.types import ModelResponse
+from agent.core.context import ModelResponse
 from agent.middleware.chain import MiddlewareChain
 from agent.steps.registry import StepRegistry
 from agent.timeline.models import Checkpoint, CheckpointKind

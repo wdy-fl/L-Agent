@@ -1,5 +1,5 @@
 from agent.llm.client import LLMClient, OpenAICompatibleClient
-from agent.llm.types import (
+from agent.core.context import (
     BaseModelContext,
     ModelConfig,
     ModelRequest,

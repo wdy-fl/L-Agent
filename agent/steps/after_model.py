@@ -4,7 +4,7 @@ import uuid
 
 from agent.core.context import RunContext
 from agent.core.lifecycle import HookPhase
-from agent.llm.types import ModelResponse
+from agent.core.context import ModelResponse
 from agent.steps.base import Step
 from agent.timeline.models import Message
 

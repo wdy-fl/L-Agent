@@ -4,7 +4,7 @@ import uuid
 
 from agent.core.context import RunContext
 from agent.core.runner import AgentRunner
-from agent.llm.types import ModelResponse, ToolCallRequest, Usage
+from agent.core.context import ModelResponse, ToolCallRequest, Usage
 from agent.middleware.chain import MiddlewareChain
 from agent.steps.after_agent import CheckpointRecordRunTerminalState, RunMarkTerminalState
 from agent.steps.after_model import MessageCommitAssistant, ResultDetectFinalAnswer, ToolDetectRequested, UsageUpdate

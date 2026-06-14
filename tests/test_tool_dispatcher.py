@@ -7,7 +7,7 @@ from agent.actions.tool_call import make_tool_call_action
 from agent.core.context import RunContext
 from agent.core.runner import AgentRunner
 from agent.llm.client import LLMClient
-from agent.llm.types import (
+from agent.core.context import (
     BaseModelContext,
     ModelConfig,
     ModelRequest,

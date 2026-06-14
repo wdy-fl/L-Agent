@@ -16,7 +16,7 @@ from agent.events import (
     ToolDone,
     ToolStart,
 )
-from agent.llm.types import ModelResponse, ToolCallRequest, Usage
+from agent.core.context import ModelResponse, ToolCallRequest, Usage
 from agent.middleware.chain import MiddlewareChain
 from agent.steps.registry import StepRegistry
 from agent.storage.sqlite import SQLiteTimelineStore

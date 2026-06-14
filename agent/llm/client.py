@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from agent.llm.types import ModelRequest, ModelResponse, ToolCallRequest, Usage
+from agent.core.context import ModelRequest, ModelResponse, ToolCallRequest, Usage
 
 
 class LLMClient(ABC):
