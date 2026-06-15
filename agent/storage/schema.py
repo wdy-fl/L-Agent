@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     run_id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL,
     branch_id TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'running',
+    status TEXT NOT NULL,
     created_at TEXT NOT NULL,
     completed_at TEXT
 );
