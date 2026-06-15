@@ -19,18 +19,6 @@ class ModelConfig:
 
 
 @dataclass
-class BaseModelContext:
-    """Run-level immutable context, built once in before_agent."""
-
-    identity: str = ""
-    guidance: str = ""
-    workspace_context: str = ""
-    memory_context: str | None = None
-    available_tools: list[dict[str, Any]] = field(default_factory=list)
-    model_config: ModelConfig = field(default_factory=lambda: ModelConfig())
-
-
-@dataclass
 class ModelRequest:
     """Iteration-level dynamic request, rebuilt every before_model."""
 
@@ -92,26 +80,26 @@ class BudgetState:
 class RunContext:
     """Mutable blackboard for a single AgentRun."""
 
-    # --- basic ---
+    # --- timeline ---
     session_id: str = ""
     branch_id: str = ""
     run_id: str = ""
-    input: str = ""
-    raw_input: str = ""
-    iteration_index: int = 0
-    iterations: list[dict[str, Any]] = field(default_factory=list)
+
     errors: list[Exception] = field(default_factory=list)
     interrupted: bool = False
 
     # --- messages ---
+    input: str = ""
+    enhanced_input: str = ""
     messages: list[dict[str, Any]] = field(default_factory=list)
 
     # --- model context ---
-    base_model_context: BaseModelContext | None = None
+    model_config: ModelConfig = field(default_factory=ModelConfig)
     current_model_request: ModelRequest | None = None
     current_model_response: ModelResponse | None = None
 
-    # --- tool ---
+    # --- tool context---
+    available_tools: list[dict[str, Any]] = field(default_factory=list)
     current_tool_plan: Any = None
     current_tool_results: Any = None
     has_tool_calls: bool = False

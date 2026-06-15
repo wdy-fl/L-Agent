@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS sessions (
     active_branch_id TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    metadata TEXT NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS branches (
@@ -45,8 +44,7 @@ CREATE TABLE IF NOT EXISTS checkpoints (
     session_id TEXT NOT NULL,
     branch_id TEXT NOT NULL,
     run_id TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    name TEXT NOT NULL,
+    type TEXT NOT NULL,
     message_cursor INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );

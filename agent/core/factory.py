@@ -22,10 +22,8 @@ from agent.steps.after_model import (
 )
 from agent.steps.after_tool import MessageCommitToolResults, ToolResultsCapture
 from agent.steps.before_agent import (
-    BaseContextLoadStaticParts,
     BudgetInitialize,
     ContextInitialize,
-    MemoryPrefetch,
     RunCreate,
     ToolsSnapshotAvailableTools,
 )
@@ -71,12 +69,6 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     reg = StepRegistry()
     reg.register(RunCreate())
     reg.register(ContextInitialize())
-    reg.register(BaseContextLoadStaticParts(
-        identity=settings.resolve_file(settings.agent.identity_file),
-        guidance=settings.resolve_file(settings.agent.guidance_file),
-        model_config=model_config,
-    ))
-    reg.register(MemoryPrefetch())
     reg.register(ToolsSnapshotAvailableTools(registry=tool_registry))
     reg.register(BudgetInitialize(
         max_iterations=settings.budget.max_iterations,

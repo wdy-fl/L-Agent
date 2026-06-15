@@ -20,7 +20,7 @@ from agent.cli.render import Renderer
 from agent.core.context import RunContext
 from agent.core.factory import build_runner
 from agent.core.runner import AgentRunner
-from agent.events import (
+from agent.core.events import (
     ApprovalRequest,
     ModelDone,
     ModelStart,

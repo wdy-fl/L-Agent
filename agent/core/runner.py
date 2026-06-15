@@ -7,7 +7,7 @@ from typing import Any, Callable, Awaitable
 
 from agent.core.context import RunContext
 from agent.core.lifecycle import ActionName, HookPhase
-from agent.events import (
+from agent.core.events import (
     AgentEvent,
     ApprovalRequest,
     ModelStart,

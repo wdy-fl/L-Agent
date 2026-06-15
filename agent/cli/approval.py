@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from agent.cli.select import select_prompt
-from agent.events import ApprovalRequest
+from agent.core.events import ApprovalRequest
 
 
 APPROVAL_OPTIONS = ["Yes", "No", "Always allow"]

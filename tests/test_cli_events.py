@@ -5,7 +5,7 @@ import asyncio
 from agent.cli.config import ApprovalConfig, load_approval_config
 from agent.core.context import RunContext
 from agent.core.runner import AgentRunner
-from agent.events import (
+from agent.core.events import (
     AgentEvent,
     ApprovalRequest,
     ModelDone,

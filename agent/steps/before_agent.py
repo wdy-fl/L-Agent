@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from typing import Any
 import uuid
+from pathlib import Path
 
 from agent.core.context import BudgetState, RunContext
 from agent.core.lifecycle import HookPhase
@@ -8,6 +10,15 @@ from agent.core.context import BaseModelContext, ModelConfig
 from agent.steps.base import Step
 from agent.timeline.models import AgentRun, Checkpoint, CheckpointKind, Message, RunStatus
 from agent.tools.registry import ToolRegistry
+from agent.timeline.resume import resume
+
+def _message_to_dict(message: Message) -> dict[str, Any]:
+    data: dict[str, Any] = {"role": message.role, "content": message.content}
+    if message.tool_calls:
+        data["tool_calls"] = message.tool_calls
+    if message.tool_call_id:
+        data["tool_call_id"] = message.tool_call_id
+    return data
 
 
 class RunCreate(Step):
@@ -33,44 +44,25 @@ class ContextInitialize(Step):
         super().__init__("context.initialize", HookPhase.before_agent)
 
     def run(self, ctx: RunContext) -> None:
-        ctx.iterations = []
-        ctx.iteration_index = 0
-
-
-class BaseContextLoadStaticParts(Step):
-    """Load identity / guidance / workspace into ctx.base_model_context."""
-
-    def __init__(
-        self,
-        identity: str = "",
-        guidance: str = "",
-        workspace_context: str = "",
-        model_config: ModelConfig | None = None,
-    ) -> None:
-        super().__init__("base_context.load_static_parts", HookPhase.before_agent)
-        self._identity = identity
-        self._guidance = guidance
-        self._workspace_context = workspace_context
-        self._model_config = model_config or ModelConfig()
-
-    def run(self, ctx: RunContext) -> None:
-        ctx.base_model_context = BaseModelContext(
-            identity=self._identity,
-            guidance=self._guidance,
-            workspace_context=self._workspace_context,
-            model_config=self._model_config,
+        history = resume(ctx.timeline_store, ctx.session_id)
+        if history:
+            ctx.messages = [_message_to_dict(message) for message in history.messages]
+            return
+        
+        system_prompt = Path("workspace/AGENT.md").read_text(encoding="utf-8")
+        ctx.messages.append({"role": "system", "content": system_prompt})
+        seq = ctx.timeline_store.get_latest_sequence(ctx.branch_id) + 1
+        ctx.timeline_store.append_message(
+            Message(
+                message_id=str(uuid.uuid4()),
+                session_id=ctx.session_id,
+                branch_id=ctx.branch_id,
+                run_id=ctx.run_id,
+                sequence=seq,
+                role="system",
+                content=system_prompt,
+            )
         )
-
-
-class MemoryPrefetch(Step):
-    """Placeholder: memory prefetch (real logic in a later step)."""
-
-    def __init__(self) -> None:
-        super().__init__("memory.prefetch", HookPhase.before_agent)
-
-    def run(self, ctx: RunContext) -> None:
-        if ctx.base_model_context:
-            ctx.base_model_context.memory_context = None
 
 
 class ToolsSnapshotAvailableTools(Step):
@@ -81,12 +73,10 @@ class ToolsSnapshotAvailableTools(Step):
         self._registry = registry
 
     def run(self, ctx: RunContext) -> None:
-        if ctx.base_model_context is None:
-            return
         if self._registry is None:
-            ctx.base_model_context.available_tools = []
+            ctx.available_tools = []
         else:
-            ctx.base_model_context.available_tools = self._registry.list_schemas()
+            ctx.available_tools = self._registry.list_schemas()
 
 
 class BudgetInitialize(Step):
@@ -129,24 +119,6 @@ class MessageCommitUser(Step):
             content=ctx.input,
         )
         store.append_message(msg)
-
-
-class BranchResolveActive(Step):
-    """Load active branch from session and set ctx.branch_id."""
-
-    def __init__(self) -> None:
-        super().__init__("branch.resolve_active", HookPhase.before_agent)
-
-    def run(self, ctx: RunContext) -> None:
-        store = ctx.timeline_store
-        if store is None:
-            return
-        if ctx.branch_id:
-            return
-        session = store.get_session(ctx.session_id)
-        if session is None:
-            return
-        ctx.branch_id = session.active_branch_id
 
 
 class CheckpointCreateUserSnapshot(Step):

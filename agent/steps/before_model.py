@@ -15,23 +15,7 @@ class IterationCreate(Step):
         super().__init__("iteration.create", HookPhase.before_model)
 
     def run(self, ctx: RunContext) -> None:
-        ctx.iteration_index += 1
-        ctx.iterations.append({
-            "index": ctx.iteration_index,
-            "status": "started",
-        })
         ctx.budget.consumed_iterations += 1
-
-
-class MessagesCollectVisible(Step):
-    """Collect visible messages for this iteration's model call."""
-
-    def __init__(self) -> None:
-        super().__init__("messages.collect_visible", HookPhase.before_model)
-
-    def run(self, ctx: RunContext) -> None:
-        if not ctx.messages:
-            ctx.messages = [{"role": "user", "content": ctx.input}]
 
 
 class ContextPrepareWithBudget(Step):
