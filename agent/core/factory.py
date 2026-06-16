@@ -12,6 +12,11 @@ from agent.llm.client import ModelConfig, OpenAICompatibleClient
 from agent.middleware.chain import MiddlewareChain
 from agent.middleware.model import BudgetGuard, TraceRecord
 from agent.middleware.tool import ApprovalGuard, AuditRecord, ResultLimitGuard
+from agent.steps.after_agent import (
+    RunMarkTerminalState,
+    CheckpointRecordRunTerminalState,
+    BranchUpdateResumeHead,
+)
 from agent.steps.after_model import (
     ModelCaptureResponse,
     MessageCommitAssistant,
@@ -97,6 +102,11 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     # ---- after_tool ----
     reg.register(ToolResultsCapture())
     reg.register(MessageCommitToolResults())
+
+    # ---- after_agent ----
+    reg.register(RunMarkTerminalState())
+    reg.register(CheckpointRecordRunTerminalState())
+    reg.register(BranchUpdateResumeHead())
 
     chain = MiddlewareChain()
     chain.add(BudgetGuard())
