@@ -8,8 +8,7 @@ from agent.actions.model_call import make_llm_call_action, make_llm_stream_actio
 from agent.actions.tool_call import make_tool_call_action
 from agent.config.settings import Settings, load_settings
 from agent.core.runner import AgentRunner
-from agent.llm.client import OpenAICompatibleClient
-from agent.core.context import ModelConfig
+from agent.llm.client import ModelConfig, OpenAICompatibleClient
 from agent.middleware.chain import MiddlewareChain
 from agent.middleware.model import BudgetGuard, TraceRecord
 from agent.middleware.tool import ApprovalGuard, AuditRecord, ResultLimitGuard
@@ -61,7 +60,7 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
         temperature=settings.llm.temperature,
         max_tokens=settings.llm.max_tokens,
     )
-    client = OpenAICompatibleClient(api_base=settings.llm.api_base, api_key=settings.llm.api_key)
+    client = OpenAICompatibleClient(model_config)
 
     tool_registry = create_builtin_registry()
     dispatcher = ToolDispatcher(tool_registry)

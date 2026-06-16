@@ -5,7 +5,7 @@ from typing import Any
 
 from agent.core.context import RunContext
 from agent.core.lifecycle import HookPhase
-from agent.core.context import ModelResponse
+from agent.llm.client import ModelResponse
 from agent.steps.base import Step
 from agent.tools.base import ToolCall, ToolPlan
 

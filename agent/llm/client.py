@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import json
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
@@ -7,7 +8,59 @@ from typing import Any
 
 import httpx
 
-from agent.core.context import ModelRequest, ModelResponse, ToolCallRequest, Usage
+
+@dataclass
+class ModelConfig:
+    """Model configuration parameters."""
+
+    model: str = "deepseek-chat"
+    temperature: float = 0.7
+    max_tokens: int = 4096
+    api_base: str = ""
+    api_key: str = ""
+    timeout: float = 120.0
+
+
+@dataclass
+class ModelRequest:
+    """Iteration-level dynamic request, rebuilt every before_model."""
+
+    messages: list[dict[str, Any]] = field(default_factory=list)
+    tools: list[dict[str, Any]] = field(default_factory=list)
+    model: str = "deepseek-chat"
+    temperature: float = 0.7
+    max_tokens: int = 4096
+
+
+@dataclass
+class ToolCallRequest:
+    """A single tool call within a model response."""
+
+    id: str = ""
+    name: str = ""
+    arguments: str = ""
+
+
+@dataclass
+class Usage:
+    """Token usage for a single model call."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens
+
+
+@dataclass
+class ModelResponse:
+    """Response from an LLM call."""
+
+    content: str = ""
+    tool_calls: list[ToolCallRequest] = field(default_factory=list)
+    usage: Usage = field(default_factory=Usage)
+    finish_reason: str = "stop"
 
 
 class LLMClient(ABC):
@@ -24,10 +77,10 @@ class LLMClient(ABC):
 class OpenAICompatibleClient(LLMClient):
     """OpenAI-compatible client (supports DeepSeek, GPT, Claude-compatible endpoints)."""
 
-    def __init__(self, api_base: str, api_key: str, timeout: float = 120.0) -> None:
-        self._api_base = api_base.rstrip("/")
-        self._api_key = api_key
-        self._timeout = timeout
+    def __init__(self, config: ModelConfig) -> None:
+        self._api_base = config.api_base.rstrip("/")
+        self._api_key = config.api_key
+        self._timeout = config.timeout
 
     def call(self, request: ModelRequest) -> ModelResponse:
         payload = self._build_payload(request)

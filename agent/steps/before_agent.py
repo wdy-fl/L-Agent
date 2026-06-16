@@ -6,7 +6,7 @@ from pathlib import Path
 
 from agent.core.context import BudgetState, RunContext
 from agent.core.lifecycle import HookPhase
-from agent.core.context import BaseModelContext, ModelConfig
+from agent.llm.client import ModelConfig
 from agent.steps.base import Step
 from agent.timeline.models import AgentRun, Checkpoint, CheckpointKind, Message, RunStatus
 from agent.tools.registry import ToolRegistry

@@ -3,8 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 
 from agent.core.context import RunContext
-from agent.llm.client import LLMClient
-from agent.core.context import ModelResponse
+from agent.llm.client import LLMClient, ModelResponse
 
 
 def make_llm_call_action(client: LLMClient):
