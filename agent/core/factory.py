@@ -13,32 +13,31 @@ from agent.middleware.chain import MiddlewareChain
 from agent.middleware.model import BudgetGuard, TraceRecord
 from agent.middleware.tool import ApprovalGuard, AuditRecord, ResultLimitGuard
 from agent.steps.after_model import (
-    MessageCommitAssistant,
     ModelCaptureResponse,
+    MessageCommitAssistant,
+    UsageUpdate,
     ResultDetectFinalAnswer,
     ToolDetectRequested,
-    UsageUpdate,
 )
-from agent.steps.after_tool import MessageCommitToolResults, ToolResultsCapture
+from agent.steps.after_tool import ToolResultsCapture, MessageCommitToolResults
 from agent.steps.before_agent import (
-    BudgetInitialize,
-    ContextInitialize,
     RunCreate,
+    ContextInitialize,
     ToolsSnapshotAvailableTools,
+    BudgetInitialize,
 )
 from agent.steps.before_model import (
-    ContextPrepareWithBudget,
     IterationCreate,
-    MessagesCollectVisible,
+    ContextPrepareWithBudget,
     ModelRequestCompose,
 )
 from agent.steps.before_tool import (
-    ApprovalPrepareRequests,
     ToolCallsExtract,
     ToolCallsParseArguments,
-    ToolCallsResolveTools,
     ToolCallsValidateSchema,
+    ToolCallsResolveTools,
     ToolPlanBuildSerial,
+    ApprovalPrepareRequests,
 )
 from agent.steps.registry import StepRegistry
 from agent.tools.builtin import create_builtin_registry
@@ -66,6 +65,7 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     dispatcher = ToolDispatcher(tool_registry)
 
     reg = StepRegistry()
+    # ---- before_agent ----
     reg.register(RunCreate())
     reg.register(ContextInitialize())
     reg.register(ToolsSnapshotAvailableTools(registry=tool_registry))
@@ -74,17 +74,19 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
         max_tokens=settings.budget.max_tokens,
     ))
 
+    # ---- before_model ----
     reg.register(IterationCreate())
-    reg.register(MessagesCollectVisible())
     reg.register(ContextPrepareWithBudget())
     reg.register(ModelRequestCompose())
 
+    # ---- after_model ----
     reg.register(ModelCaptureResponse())
     reg.register(MessageCommitAssistant())
     reg.register(UsageUpdate())
     reg.register(ResultDetectFinalAnswer())
     reg.register(ToolDetectRequested())
 
+    # ---- before_tool ----
     reg.register(ToolCallsExtract())
     reg.register(ToolCallsParseArguments())
     reg.register(ToolCallsValidateSchema())
@@ -92,6 +94,7 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     reg.register(ToolPlanBuildSerial())
     reg.register(ApprovalPrepareRequests())
 
+    # ---- after_tool ----
     reg.register(ToolResultsCapture())
     reg.register(MessageCommitToolResults())
 
