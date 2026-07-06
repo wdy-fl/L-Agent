@@ -75,13 +75,13 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     # ---- before_agent ----
     reg.register(RunCreate())
     reg.register(ContextInitialize())
-    reg.register(MessageCommitUser())
-    reg.register(CheckpointCreateUserSnapshot())
     reg.register(ToolsSnapshotAvailableTools(registry=tool_registry))
     reg.register(BudgetInitialize(
         max_iterations=settings.budget.max_iterations,
         max_tokens=settings.budget.max_tokens,
     ))
+    reg.register(MessageCommitUser())
+    reg.register(CheckpointCreateUserSnapshot())
 
     # ---- before_model ----
     reg.register(IterationCreate())
