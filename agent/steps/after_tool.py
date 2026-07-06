@@ -5,7 +5,7 @@ import uuid
 from agent.core.context import RunContext
 from agent.core.lifecycle import HookPhase
 from agent.steps.base import Step
-from agent.timeline.models import Checkpoint, CheckpointKind, Message
+from agent.timeline.models import Checkpoint, CheckpointType, Message
 from agent.tools.base import ToolResult, ToolResultStatus
 
 
@@ -79,8 +79,7 @@ class CheckpointRecordToolResultsCommitted(Step):
             session_id=ctx.session_id,
             branch_id=ctx.branch_id,
             run_id=ctx.run_id,
-            kind=CheckpointKind.runtime,
-            name="tool_results_committed",
+            type=CheckpointType.runtime,
             message_cursor=cursor,
         )
         store.create_checkpoint(cp)

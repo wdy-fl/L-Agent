@@ -8,7 +8,7 @@ from agent.core.context import BudgetState, RunContext
 from agent.core.lifecycle import HookPhase
 from agent.llm.client import ModelConfig
 from agent.steps.base import Step
-from agent.timeline.models import AgentRun, Checkpoint, CheckpointKind, Message, RunStatus
+from agent.timeline.models import AgentRun, Checkpoint, CheckpointType, Message, RunStatus
 from agent.tools.registry import ToolRegistry
 from agent.timeline.resume import resume
 
@@ -137,8 +137,7 @@ class CheckpointCreateUserSnapshot(Step):
             session_id=ctx.session_id,
             branch_id=ctx.branch_id,
             run_id=ctx.run_id,
-            kind=CheckpointKind.user_snapshot,
-            name="user_message_committed",
+            type=CheckpointType.user_snapshot,
             message_cursor=cursor,
         )
         store.create_checkpoint(cp)

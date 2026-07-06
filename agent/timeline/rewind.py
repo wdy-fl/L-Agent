@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 
-from agent.timeline.models import Branch, CheckpointKind, Message
+from agent.timeline.models import Branch, CheckpointType, Message
 from agent.timeline.resume import collect_branch_messages
 from agent.timeline.store import TimelineStore
 
@@ -22,7 +22,7 @@ def rewind(store: TimelineStore, session_id: str, checkpoint_id: str) -> RewindR
     checkpoint = store.get_checkpoint(checkpoint_id)
     if checkpoint is None:
         raise ValueError(f"checkpoint {checkpoint_id} not found")
-    if checkpoint.kind != CheckpointKind.user_snapshot:
+    if checkpoint.type != CheckpointType.user_snapshot:
         raise ValueError(f"checkpoint {checkpoint_id} is not a user_snapshot, cannot rewind to it")
 
     parent_branch_id = checkpoint.branch_id

@@ -10,7 +10,7 @@ from agent.timeline.models import (
     AgentRun,
     Branch,
     Checkpoint,
-    CheckpointKind,
+    CheckpointType,
     Message,
     RunStatus,
     Session,
@@ -35,10 +35,9 @@ class SQLiteTimelineStore(TimelineStore):
     # --- Session ---
     def create_session(self, session: Session) -> None:
         self._conn.execute(
-            "INSERT INTO sessions VALUES (?,?,?,?,?,?)",
+            "INSERT INTO sessions VALUES (?,?,?,?,?)",
             (session.session_id, session.title, session.active_branch_id,
-             _dt_to_str(session.created_at), _dt_to_str(session.updated_at),
-             json.dumps(session.metadata)),
+             _dt_to_str(session.created_at), _dt_to_str(session.updated_at)),
         )
         self._conn.commit()
 
@@ -51,14 +50,12 @@ class SQLiteTimelineStore(TimelineStore):
             active_branch_id=row["active_branch_id"],
             created_at=_str_to_dt(row["created_at"]),
             updated_at=_str_to_dt(row["updated_at"]),
-            metadata=json.loads(row["metadata"]),
         )
 
     def update_session(self, session: Session) -> None:
         self._conn.execute(
-            "UPDATE sessions SET title=?, active_branch_id=?, updated_at=?, metadata=? WHERE session_id=?",
-            (session.title, session.active_branch_id, _dt_to_str(session.updated_at),
-             json.dumps(session.metadata), session.session_id),
+            "UPDATE sessions SET title=?, active_branch_id=?, updated_at=? WHERE session_id=?",
+            (session.title, session.active_branch_id, _dt_to_str(session.updated_at), session.session_id),
         )
         self._conn.commit()
 
@@ -70,7 +67,6 @@ class SQLiteTimelineStore(TimelineStore):
                 active_branch_id=row["active_branch_id"],
                 created_at=_str_to_dt(row["created_at"]),
                 updated_at=_str_to_dt(row["updated_at"]),
-                metadata=json.loads(row["metadata"]),
             )
             for row in rows
         ]
@@ -168,10 +164,10 @@ class SQLiteTimelineStore(TimelineStore):
     # --- Checkpoint ---
     def create_checkpoint(self, checkpoint: Checkpoint) -> None:
         self._conn.execute(
-            "INSERT INTO checkpoints VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT INTO checkpoints VALUES (?,?,?,?,?,?,?)",
             (checkpoint.checkpoint_id, checkpoint.session_id, checkpoint.branch_id,
-             checkpoint.run_id, checkpoint.kind.value, checkpoint.name,
-             checkpoint.message_cursor, _dt_to_str(checkpoint.created_at)),
+             checkpoint.run_id, checkpoint.type.value, checkpoint.message_cursor,
+             _dt_to_str(checkpoint.created_at)),
         )
         self._conn.commit()
 
@@ -226,7 +222,7 @@ class SQLiteTimelineStore(TimelineStore):
         return Checkpoint(
             checkpoint_id=row["checkpoint_id"], session_id=row["session_id"],
             branch_id=row["branch_id"], run_id=row["run_id"],
-            kind=CheckpointKind(row["kind"]), name=row["name"],
+            type=CheckpointType(row["type"]),
             message_cursor=row["message_cursor"],
             created_at=_str_to_dt(row["created_at"]),
         )

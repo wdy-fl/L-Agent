@@ -58,7 +58,7 @@ def load_settings(config_path: Path | None = None) -> Settings:
     if path is None:
         return Settings()
 
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
 
     settings = _parse(data)

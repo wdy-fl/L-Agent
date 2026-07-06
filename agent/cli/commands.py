@@ -7,7 +7,7 @@ from rich.table import Table
 
 from agent.cli.select import select_prompt
 from agent.storage.sqlite import SQLiteTimelineStore
-from agent.timeline.models import CheckpointKind
+from agent.timeline.models import CheckpointType
 from agent.timeline.resume import ResumeResult, resume
 from agent.timeline.rewind import RewindResult, rewind
 from agent.timeline.session_factory import create_session_with_default_branch
@@ -104,13 +104,13 @@ class CommandDispatcher:
             return
 
         checkpoints = self._store.get_checkpoints_by_branch(self._branch_id)
-        user_snapshots = [cp for cp in checkpoints if cp.kind == CheckpointKind.user_snapshot]
+        user_snapshots = [cp for cp in checkpoints if cp.type == CheckpointType.user_snapshot]
 
         if not user_snapshots:
             self._console.print("[dim]No checkpoints to rewind to.[/dim]")
             return
 
-        options = [f"#{i+1}: {cp.name} (seq {cp.message_cursor})" for i, cp in enumerate(user_snapshots)]
+        options = [f"#{i+1}: {cp.checkpoint_id[:8]} (seq {cp.message_cursor})" for i, cp in enumerate(user_snapshots)]
         choice = await select_prompt(options, title="Select rewind point")
         if choice < 0:
             return

@@ -5,7 +5,7 @@ import uuid
 from agent.core.context import RunContext
 from agent.core.lifecycle import HookPhase
 from agent.steps.base import Step
-from agent.timeline.models import Checkpoint, CheckpointKind, RunStatus
+from agent.timeline.models import Checkpoint, CheckpointType, RunStatus
 
 
 class RunMarkTerminalState(Step):
@@ -34,14 +34,12 @@ class CheckpointRecordRunTerminalState(Step):
         if store is None:
             return
         cursor = store.get_latest_sequence(ctx.branch_id)
-        name = f"run_{ctx.status}"
         cp = Checkpoint(
             checkpoint_id=str(uuid.uuid4()),
             session_id=ctx.session_id,
             branch_id=ctx.branch_id,
             run_id=ctx.run_id,
-            kind=CheckpointKind.runtime,
-            name=name,
+            type=CheckpointType.runtime,
             message_cursor=cursor,
         )
         store.create_checkpoint(cp)
@@ -62,7 +60,7 @@ class BranchUpdateResumeHead(Step):
         checkpoints = store.get_checkpoints_by_branch(ctx.branch_id)
         run_completed_cp = None
         for cp in reversed(checkpoints):
-            if cp.run_id == ctx.run_id and cp.name == "run_completed":
+            if cp.run_id == ctx.run_id and cp.type == CheckpointType.runtime:
                 run_completed_cp = cp
                 break
         if run_completed_cp is None:

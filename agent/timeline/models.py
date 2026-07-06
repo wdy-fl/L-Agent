@@ -17,7 +17,7 @@ class RunStatus(str, Enum):
     interrupted = "interrupted"
 
 
-class CheckpointKind(str, Enum):
+class CheckpointType(str, Enum):
     user_snapshot = "user_snapshot"
     runtime = "runtime"
 
@@ -29,7 +29,6 @@ class Session:
     active_branch_id: str = ""
     created_at: datetime = field(default_factory=_now)
     updated_at: datetime = field(default_factory=_now)
-    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -80,7 +79,6 @@ class Checkpoint:
     session_id: str
     branch_id: str
     run_id: str
-    kind: CheckpointKind
-    name: str
+    type: CheckpointType
     message_cursor: int = 0
     created_at: datetime = field(default_factory=_now)

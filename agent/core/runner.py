@@ -22,7 +22,7 @@ from agent.core.events import (
 from agent.llm.client import ModelResponse
 from agent.middleware.chain import MiddlewareChain
 from agent.steps.registry import StepRegistry
-from agent.timeline.models import Checkpoint, CheckpointKind
+from agent.timeline.models import Checkpoint, CheckpointType
 from agent.tools.base import ToolCall, ToolResult, ToolResultStatus
 
 
@@ -190,8 +190,7 @@ class AgentRunner:
             session_id=ctx.session_id,
             branch_id=ctx.branch_id,
             run_id=ctx.run_id,
-            kind=CheckpointKind.runtime,
-            name=name,
+            type=CheckpointType.runtime,
             message_cursor=cursor,
         )
         store.create_checkpoint(cp)
