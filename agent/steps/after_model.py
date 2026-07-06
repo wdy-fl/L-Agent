@@ -9,16 +9,6 @@ from agent.steps.base import Step
 from agent.timeline.models import Message
 
 
-class ModelCaptureResponse(Step):
-    """Write raw model response into ctx.current_model_response."""
-
-    def __init__(self) -> None:
-        super().__init__("model.capture_response", HookPhase.after_model)
-
-    def run(self, ctx: RunContext) -> None:
-        pass
-
-
 class MessageCommitAssistant(Step):
     """Commit assistant message (with or without tool_calls) to message list."""
 

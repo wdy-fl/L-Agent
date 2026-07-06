@@ -18,7 +18,6 @@ from agent.steps.after_agent import (
     BranchUpdateResumeHead,
 )
 from agent.steps.after_model import (
-    ModelCaptureResponse,
     MessageCommitAssistant,
     UsageUpdate,
     ResultDetectFinalAnswer,
@@ -89,7 +88,6 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     reg.register(ModelRequestCompose())
 
     # ---- after_model ----
-    reg.register(ModelCaptureResponse())
     reg.register(MessageCommitAssistant())
     reg.register(UsageUpdate())
     reg.register(ResultDetectFinalAnswer())
