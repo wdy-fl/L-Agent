@@ -20,8 +20,7 @@ from agent.steps.after_agent import (
 from agent.steps.after_model import (
     MessageCommitAssistant,
     UsageUpdate,
-    ResultDetectFinalAnswer,
-    ToolDetectRequested,
+    ResultDetectRouting,
 )
 from agent.steps.after_tool import ToolResultsCapture, MessageCommitToolResults
 from agent.steps.before_agent import (
@@ -90,8 +89,7 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     # ---- after_model ----
     reg.register(MessageCommitAssistant())
     reg.register(UsageUpdate())
-    reg.register(ResultDetectFinalAnswer())
-    reg.register(ToolDetectRequested())
+    reg.register(ResultDetectRouting())
 
     # ---- before_tool ----
     reg.register(ToolCallsExtract())

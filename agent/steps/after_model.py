@@ -61,27 +61,11 @@ class UsageUpdate(Step):
         ctx.budget.consumed_output_tokens += resp.usage.output_tokens
 
 
-class ResultDetectFinalAnswer(Step):
-    """If model has no tool_calls, set ctx.final_result."""
+class ResultDetectRouting(Step):
+    """Classify model response: final answer (no tool_calls) or tool request."""
 
     def __init__(self) -> None:
-        super().__init__("result.detect_final_answer", HookPhase.after_model)
-
-    def run(self, ctx: RunContext) -> None:
-        resp = ctx.current_model_response
-        if resp is None or not isinstance(resp, ModelResponse):
-            return
-
-        if not resp.tool_calls:
-            ctx.has_tool_calls = False
-            ctx.final_result = resp.content
-
-
-class ToolDetectRequested(Step):
-    """If model response has tool_calls, set ctx.has_tool_calls = True."""
-
-    def __init__(self) -> None:
-        super().__init__("tool.detect_requested", HookPhase.after_model)
+        super().__init__("result.detect_routing", HookPhase.after_model)
 
     def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
@@ -90,3 +74,6 @@ class ToolDetectRequested(Step):
 
         if resp.tool_calls:
             ctx.has_tool_calls = True
+        else:
+            ctx.has_tool_calls = False
+            ctx.final_result = resp.content
