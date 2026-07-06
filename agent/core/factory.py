@@ -28,6 +28,8 @@ from agent.steps.after_tool import ToolResultsCapture, MessageCommitToolResults
 from agent.steps.before_agent import (
     RunCreate,
     ContextInitialize,
+    MessageCommitUser,
+    CheckpointCreateUserSnapshot,
     ToolsSnapshotAvailableTools,
     BudgetInitialize,
 )
@@ -73,6 +75,8 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     # ---- before_agent ----
     reg.register(RunCreate())
     reg.register(ContextInitialize())
+    reg.register(MessageCommitUser())
+    reg.register(CheckpointCreateUserSnapshot())
     reg.register(ToolsSnapshotAvailableTools(registry=tool_registry))
     reg.register(BudgetInitialize(
         max_iterations=settings.budget.max_iterations,
