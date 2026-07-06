@@ -27,9 +27,6 @@ class ModelRequest:
 
     messages: list[dict[str, Any]] = field(default_factory=list)
     tools: list[dict[str, Any]] = field(default_factory=list)
-    model: str = "deepseek-chat"
-    temperature: float = 0.7
-    max_tokens: int = 4096
 
 
 @dataclass
@@ -81,6 +78,9 @@ class OpenAICompatibleClient(LLMClient):
         self._api_base = config.api_base.rstrip("/")
         self._api_key = config.api_key
         self._timeout = config.timeout
+        self._model = config.model
+        self._temperature = config.temperature
+        self._max_tokens = config.max_tokens
 
     def call(self, request: ModelRequest) -> ModelResponse:
         payload = self._build_payload(request)
@@ -168,10 +168,10 @@ class OpenAICompatibleClient(LLMClient):
 
     def _build_payload(self, request: ModelRequest) -> dict[str, Any]:
         payload: dict[str, Any] = {
-            "model": request.model,
+            "model": self._model,
             "messages": request.messages,
-            "temperature": request.temperature,
-            "max_tokens": request.max_tokens,
+            "temperature": self._temperature,
+            "max_tokens": self._max_tokens,
         }
         if request.tools:
             payload["tools"] = request.tools

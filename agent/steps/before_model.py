@@ -43,36 +43,15 @@ class ContextPrepareWithBudget(Step):
 
 
 class ModelRequestCompose(Step):
-    """Merge base_model_context + visible messages + params → ModelRequest."""
 
     def __init__(self) -> None:
         super().__init__("model_request.compose", HookPhase.before_model)
 
     def run(self, ctx: RunContext) -> None:
-        base = ctx.base_model_context
-        if base is None:
-            ctx.current_model_request = ModelRequest(messages=ctx.messages)
-            return
-
-        system_parts: list[str] = []
-        if base.identity:
-            system_parts.append(base.identity)
-        if base.guidance:
-            system_parts.append(base.guidance)
-        if base.workspace_context:
-            system_parts.append(base.workspace_context)
-        if base.memory_context:
-            system_parts.append(base.memory_context)
-
         messages: list[dict[str, Any]] = []
-        if system_parts:
-            messages.append({"role": "system", "content": "\n\n".join(system_parts)})
         messages.extend(ctx.messages)
 
         ctx.current_model_request = ModelRequest(
             messages=messages,
-            tools=base.available_tools,
-            model=base.model_config.model,
-            temperature=base.model_config.temperature,
-            max_tokens=base.model_config.max_tokens,
+            tools=ctx.available_tools,
         )
