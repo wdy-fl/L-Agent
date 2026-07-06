@@ -161,7 +161,7 @@ class CLISession:
         if ctx.interrupted:
             self._render.show_interrupted()
         elif ctx.status == "completed":
-            self._render.show_status(ctx.iteration_index, total_tokens, elapsed_ms)
+            self._render.show_status(ctx.budget.consumed_iterations, total_tokens, elapsed_ms)
 
 
 @app.command()
