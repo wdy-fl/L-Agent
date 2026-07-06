@@ -91,9 +91,6 @@ class AgentRunner:
 
             self._run_phase(HookPhase.after_model, ctx)
 
-            if ctx.final_result is not None and not ctx.has_tool_calls:
-                break
-
             if ctx.has_tool_calls:
                 self._run_phase(HookPhase.before_tool, ctx)
 
