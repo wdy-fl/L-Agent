@@ -48,10 +48,7 @@ class ModelRequestCompose(Step):
         super().__init__("model_request.compose", HookPhase.before_model)
 
     def run(self, ctx: RunContext) -> None:
-        messages: list[dict[str, Any]] = []
-        messages.extend(ctx.messages)
-
         ctx.current_model_request = ModelRequest(
-            messages=messages,
+            messages=ctx.messages,
             tools=ctx.available_tools,
         )
