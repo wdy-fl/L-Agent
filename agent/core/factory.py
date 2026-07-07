@@ -33,7 +33,6 @@ from agent.steps.before_agent import (
 )
 from agent.steps.before_model import (
     IterationCreate,
-    ContextPrepareWithBudget,
     ModelRequestCompose,
 )
 from agent.steps.before_tool import (
@@ -83,7 +82,6 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
 
     # ---- before_model ----
     reg.register(IterationCreate())
-    reg.register(ContextPrepareWithBudget())
     reg.register(ModelRequestCompose())
 
     # ---- after_model ----
