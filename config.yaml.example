@@ -3,7 +3,7 @@
 # ═══════════════════════════════════════════
 llm:
   api_base: "https://api.deepseek.com"
-  api_key: "sk-35cc873acd5d4253aafdb64ac3820bef"
+  api_key: "这里换成你的api_key"
   model: "deepseek-v4-pro"
   temperature: 0.7
   max_tokens: 4096
