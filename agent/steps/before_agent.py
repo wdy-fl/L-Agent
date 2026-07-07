@@ -45,7 +45,7 @@ class ContextInitialize(Step):
 
     def run(self, ctx: RunContext) -> None:
         history = resume(ctx.timeline_store, ctx.session_id)
-        if history:
+        if history.messages:
             ctx.messages = [_message_to_dict(message) for message in history.messages]
             return
         
