@@ -25,26 +25,10 @@ class BudgetSettings:
 
 
 @dataclass
-class AgentSettings:
-    identity_file: str = ""
-    guidance_file: str = ""
-
-
-@dataclass
 class Settings:
     llm: LLMSettings = field(default_factory=LLMSettings)
     budget: BudgetSettings = field(default_factory=BudgetSettings)
-    agent: AgentSettings = field(default_factory=AgentSettings)
     config_dir: Path = field(default_factory=lambda: Path("."))
-
-    def resolve_file(self, relative_path: str) -> str:
-        """Read a file path relative to config directory, return its content."""
-        if not relative_path:
-            return ""
-        p = self.config_dir / relative_path
-        if not p.exists():
-            return ""
-        return p.read_text(encoding="utf-8").strip()
 
 
 DEFAULT_CONFIG_PATHS = [
@@ -78,10 +62,8 @@ def _resolve_path(config_path: Path | None) -> Path | None:
 def _parse(data: dict[str, Any]) -> Settings:
     llm_data = data.get("llm", {})
     budget_data = data.get("budget", {})
-    agent_data = data.get("agent", {})
 
     return Settings(
         llm=LLMSettings(**{k: v for k, v in llm_data.items() if k in LLMSettings.__dataclass_fields__}),
         budget=BudgetSettings(**{k: v for k, v in budget_data.items() if k in BudgetSettings.__dataclass_fields__}),
-        agent=AgentSettings(**{k: v for k, v in agent_data.items() if k in AgentSettings.__dataclass_fields__}),
     )
