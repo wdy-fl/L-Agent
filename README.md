@@ -51,7 +51,8 @@ l-agent --db path/to/db        # 指定 SQLite 路径
 | `search_file` | 搜索文件内容 | 自动 |
 | `terminal` | 执行终端命令 | 需确认 |
 | `web_search` | 网络搜索 | 自动 |
-| `web_fetch` | 获取网页内容 | 自动 |
+
+> `web_search` 为客户端函数工具，启用 `llm.web_search: true` 后注册，handler 调用智谱 web-search-pro 独立搜索 API 取原始结果回灌上下文。
 
 ## 交互命令
 

@@ -44,7 +44,7 @@ from agent.steps.before_tool import (
     ApprovalPrepareRequests,
 )
 from agent.steps.registry import StepRegistry
-from agent.tools.builtin import create_builtin_registry
+from agent.tools.builtin import create_builtin_registry, make_web_search_tool
 from agent.tools.dispatcher import ToolDispatcher
 
 
@@ -66,6 +66,11 @@ def build_runner(config_path: Path | None = None) -> AgentRunner:
     client = OpenAICompatibleClient(model_config)
 
     tool_registry = create_builtin_registry()
+    # web_search 为客户端函数工具，需凭据；仅在 llm.web_search 开启时注册。
+    if settings.llm.web_search:
+        tool_registry.register(
+            make_web_search_tool(settings.llm.api_base, settings.llm.api_key)
+        )
     dispatcher = ToolDispatcher(tool_registry)
 
     reg = StepRegistry()

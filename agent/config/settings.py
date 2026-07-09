@@ -11,11 +11,16 @@ import yaml
 
 @dataclass
 class LLMSettings:
-    api_base: str = "https://api.deepseek.com"
+    # api_base 应包含版本路径：智谱为 https://open.bigmodel.cn/api/paas/v4
+    # （OpenAI 兼容，客户端只追加 /chat/completions）。
+    api_base: str = "https://open.bigmodel.cn/api/paas/v4"
     api_key: str = ""
-    model: str = "deepseek-chat"
+    model: str = "glm-5.2"
     temperature: float = 0.7
     max_tokens: int = 4096
+    # 开启 web 搜索：注册客户端 web_search 函数工具（调智谱 web-search-pro），
+    # 需与智谱 api_base/api_key 配合使用。
+    web_search: bool = False
 
 
 @dataclass

@@ -13,7 +13,7 @@ import httpx
 class ModelConfig:
     """Model configuration parameters."""
 
-    model: str = "deepseek-chat"
+    model: str = "glm-5.2"
     temperature: float = 0.7
     max_tokens: int = 4096
     api_base: str = ""
@@ -55,6 +55,8 @@ class ModelResponse:
     """Response from an LLM call."""
 
     content: str = ""
+    # 推理模型的思维链（GLM-5.2 等）。web_search 的检索引用也落在这里。
+    reasoning_content: str = ""
     tool_calls: list[ToolCallRequest] = field(default_factory=list)
     usage: Usage = field(default_factory=Usage)
     finish_reason: str = "stop"
@@ -88,7 +90,7 @@ class OpenAICompatibleClient(LLMClient):
 
         with httpx.Client(timeout=self._timeout) as client:
             resp = client.post(
-                f"{self._api_base}/v1/chat/completions",
+                f"{self._api_base}/chat/completions",
                 json=payload,
                 headers=headers,
             )
@@ -101,6 +103,7 @@ class OpenAICompatibleClient(LLMClient):
         payload["stream"] = True
 
         content_parts: list[str] = []
+        reasoning_parts: list[str] = []
         tool_calls_raw: dict[int, dict] = {}
         usage_data: dict = {}
         finish_reason = "stop"
@@ -108,7 +111,7 @@ class OpenAICompatibleClient(LLMClient):
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             async with client.stream(
                 "POST",
-                f"{self._api_base}/v1/chat/completions",
+                f"{self._api_base}/chat/completions",
                 json=payload,
                 headers=self._headers(),
             ) as resp:
@@ -125,6 +128,10 @@ class OpenAICompatibleClient(LLMClient):
                     if text := delta.get("content"):
                         content_parts.append(text)
                         yield text
+
+                    # 推理模型的思维链（不实时吐给前端，仅在最终响应里带回）。
+                    if rc := delta.get("reasoning_content"):
+                        reasoning_parts.append(rc)
 
                     if tc_list := delta.get("tool_calls"):
                         for tc in tc_list:
@@ -152,6 +159,7 @@ class OpenAICompatibleClient(LLMClient):
 
         yield ModelResponse(
             content="".join(content_parts),
+            reasoning_content="".join(reasoning_parts),
             tool_calls=tool_calls,
             usage=Usage(
                 input_tokens=usage_data.get("prompt_tokens", 0),
@@ -182,6 +190,7 @@ class OpenAICompatibleClient(LLMClient):
         message = choice["message"]
 
         content = message.get("content") or ""
+        reasoning_content = message.get("reasoning_content") or ""
 
         tool_calls: list[ToolCallRequest] = []
         if raw_calls := message.get("tool_calls"):
@@ -208,6 +217,7 @@ class OpenAICompatibleClient(LLMClient):
 
         return ModelResponse(
             content=content,
+            reasoning_content=reasoning_content,
             tool_calls=tool_calls,
             usage=usage,
             finish_reason=finish_reason,

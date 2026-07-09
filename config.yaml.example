@@ -1,12 +1,16 @@
 # ═══════════════════════════════════════════
 # LLM 模型配置
 # ═══════════════════════════════════════════
+# api_base 需包含版本路径：智谱为 https://open.bigmodel.cn/api/paas/v4
+# （OpenAI 兼容端点，客户端只追加 /chat/completions）。
 llm:
-  api_base: "https://api.deepseek.com"
-  api_key: "这里换成你的api_key"
-  model: "deepseek-v4-pro"
+  api_base: "https://open.bigmodel.cn/api/paas/v4"
+  api_key: "这里换成你的智谱api_key"
+  model: "glm-5.2"
   temperature: 0.7
   max_tokens: 4096
+  # 开启 web 搜索：注册 web_search 客户端工具（调智谱 web-search-pro）。
+  web_search: true
 
 # ═══════════════════════════════════════════
 # 运行预算限制
@@ -25,7 +29,6 @@ approval:
     - list_directory
     - search_file
     - web_search
-    - web_fetch
   always_confirm:
     - terminal
     - write_file

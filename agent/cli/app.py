@@ -141,8 +141,9 @@ class CLISession:
                     self._render.stream_text(t)
                 case ModelStart():
                     pass
-                case ModelDone():
+                case ModelDone(response=resp):
                     self._render.finish_stream()
+                    self._render.show_reasoning(getattr(resp, "reasoning_content", ""))
                 case ToolStart(tool_name=name):
                     self._render.show_tool_spinner(name)
                 case ToolDone(tool_name=name, result=r):

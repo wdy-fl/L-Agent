@@ -32,6 +32,21 @@ class Renderer:
             self._live = None
         self._stream_buffer = ""
 
+    def show_reasoning(self, text: str) -> None:
+        """Display the model's reasoning chain (dim panel, after the answer).
+
+        For reasoning models like GLM-5.2 this also carries the web_search
+        citation references, so it doubles as a source-transparency view.
+        """
+        if not text or not text.strip():
+            return
+        self._console.print(Panel(
+            text,
+            title="[dim]reasoning[/dim]",
+            border_style="dim",
+            expand=False,
+        ))
+
     def show_tool_spinner(self, tool_name: str) -> None:
         self._console.print(
             Spinner("dots", text=Text(f" Running {tool_name}...", style="dim")),

@@ -8,7 +8,7 @@ from agent.tools.builtin.file_ops import (
 )
 from agent.tools.builtin.terminal import terminal_tool
 from agent.tools.builtin.think import think_tool
-from agent.tools.builtin.web import web_fetch_tool, web_search_tool
+from agent.tools.builtin.web import make_web_search_tool
 from agent.tools.registry import ToolRegistry
 
 ALL_BUILTIN_TOOLS = [
@@ -18,9 +18,9 @@ ALL_BUILTIN_TOOLS = [
     list_directory_tool,
     search_file_tool,
     terminal_tool,
-    web_search_tool,
-    web_fetch_tool,
 ]
+# web_search 需要凭据，由 factory 在 llm.web_search 开启时通过
+# make_web_search_tool(api_base, api_key) 创建并注册，不放入 ALL_BUILTIN_TOOLS。
 
 AUTO_APPROVE_TOOLS = frozenset({
     "think",
@@ -28,7 +28,6 @@ AUTO_APPROVE_TOOLS = frozenset({
     "list_directory",
     "search_file",
     "web_search",
-    "web_fetch",
 })
 
 ALWAYS_CONFIRM_TOOLS = frozenset({
