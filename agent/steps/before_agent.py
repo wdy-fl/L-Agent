@@ -66,7 +66,7 @@ class ContextInitialize(Step):
 
 
 class ToolsSnapshotAvailableTools(Step):
-    """Snapshot available tools from ToolRegistry into ctx.base_model_context."""
+    """Snapshot available tools from ToolRegistry into ctx.available_tools."""
 
     def __init__(self, registry: ToolRegistry | None = None) -> None:
         super().__init__("tools.snapshot_available_tools", HookPhase.before_agent)

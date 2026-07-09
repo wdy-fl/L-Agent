@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 from typing import Any, Callable
 
 from agent.core.context import RunContext
@@ -26,15 +25,7 @@ class AuditRecord(Middleware):
         super().__init__("audit.record", ActionName.tool_call)
 
     def __call__(self, ctx: RunContext, next_call: Callable[[], Any]) -> Any:
-        start = time.time()
-        result = next_call()
-        elapsed = time.time() - start
-
-        if ctx.iterations:
-            current = ctx.iterations[-1]
-            current["tool_call_duration_ms"] = int(elapsed * 1000)
-
-        return result
+        return next_call()
 
 
 class ResultLimitGuard(Middleware):

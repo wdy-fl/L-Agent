@@ -52,17 +52,4 @@ class TraceRecord(Middleware):
         super().__init__("trace.record", ActionName.model_call)
 
     def __call__(self, ctx: RunContext, next_call: Callable[[], Any]) -> Any:
-        start = time.time()
-        result = next_call()
-        elapsed = time.time() - start
-
-        if ctx.iterations:
-            current = ctx.iterations[-1]
-            current["model_call_duration_ms"] = int(elapsed * 1000)
-            if result and hasattr(result, "usage"):
-                current["usage"] = {
-                    "input_tokens": result.usage.input_tokens,
-                    "output_tokens": result.usage.output_tokens,
-                }
-
-        return result
+        return next_call()

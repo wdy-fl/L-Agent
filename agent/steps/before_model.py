@@ -7,7 +7,7 @@ from agent.steps.base import Step
 
 
 class IterationCreate(Step):
-    """Increment iteration_index and record in ctx.iterations."""
+    """Increment iteration counter in ctx.budget."""
 
     def __init__(self) -> None:
         super().__init__("iteration.create", HookPhase.before_model)
