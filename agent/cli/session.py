@@ -1,12 +1,10 @@
-"""CLI main loop: typer entry + asyncio event loop."""
+"""CLI interactive session: main loop + event rendering."""
 
 from __future__ import annotations
 
-import asyncio
 import time
 from pathlib import Path
 
-import typer
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
@@ -15,7 +13,7 @@ from rich.console import Console
 from agent.cli.approval import ApprovalHandler
 from agent.cli.commands import CommandDispatcher
 from agent.cli.render import Renderer
-from agent.config.settings import Settings, load_settings
+from agent.config.settings import Settings
 from agent.core.context import RunContext
 from agent.core.factory import build_runner
 from agent.core.events import (
@@ -34,7 +32,6 @@ from agent.storage.sqlite import SQLiteTimelineStore
 from agent.timeline.session_factory import create_session_with_default_branch
 from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS
 
-app = typer.Typer(add_completion=False)
 console = Console()
 
 
@@ -155,25 +152,3 @@ class CLISession:
             self._render.show_interrupted()
         elif ctx.status == "completed":
             self._render.show_status(ctx.budget.consumed_iterations, total_tokens, elapsed_ms)
-
-
-CONFIG_PATH = Path("workspace/config.yaml")
-
-
-@app.command()
-def main() -> None:
-    """L-Agent CLI - Interactive AI Agent."""
-    try:
-        settings = load_settings(CONFIG_PATH)
-    except FileNotFoundError:
-        console.print(
-            f"[red]错误:缺少配置文件 {CONFIG_PATH},请参照 config.yaml.example 创建。[/red]"
-        )
-        raise typer.Exit(1)
-
-    cli_session = CLISession(settings)
-    asyncio.run(cli_session.start())
-
-
-if __name__ == "__main__":
-    app()

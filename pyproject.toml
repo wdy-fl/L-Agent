@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-l-agent = "agent.cli.app:app"
+l-agent = "agent.main:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
