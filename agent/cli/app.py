@@ -14,12 +14,10 @@ from rich.console import Console
 
 from agent.cli.approval import ApprovalHandler
 from agent.cli.commands import CommandDispatcher
-from agent.cli.config import load_approval_config
 from agent.cli.render import Renderer
-from agent.config.settings import load_settings
+from agent.config.settings import Settings, load_settings
 from agent.core.context import RunContext
 from agent.core.factory import build_runner
-from agent.core.runner import AgentRunner
 from agent.core.events import (
     ApprovalRequest,
     ModelDone,
@@ -45,21 +43,22 @@ class CLISession:
 
     def __init__(
         self,
-        runner: AgentRunner,
-        store: SQLiteTimelineStore,
-        config_path: Path | None = None,
+        settings: Settings,
     ) -> None:
-        self._runner = runner
-        self._store = store
+        self._runner = build_runner(settings)
+
+        db_path = Path(settings.storage.db_path)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._store = SQLiteTimelineStore(db_path)
+
         self._console = console
         self._render = Renderer(console)
 
-        config = load_approval_config(config_path)
-        auto_approve = set(config.auto_approve) | AUTO_APPROVE_TOOLS
-        always_confirm = set(config.always_confirm) | ALWAYS_CONFIRM_TOOLS
+        auto_approve = set(settings.approval.auto_approve) | AUTO_APPROVE_TOOLS
+        always_confirm = set(settings.approval.always_confirm) | ALWAYS_CONFIRM_TOOLS
         self._approval = ApprovalHandler(console, auto_approve=auto_approve)
         self._always_confirm = always_confirm
-        self._commands = CommandDispatcher(store, console)
+        self._commands = CommandDispatcher(self._store, console)
 
         self._session_id: str = ""
         self._branch_id: str = ""
@@ -172,13 +171,7 @@ def main() -> None:
         )
         raise typer.Exit(1)
 
-    db_path = Path(settings.storage.db_path)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    store = SQLiteTimelineStore(db_path)
-
-    runner = build_runner(settings)
-
-    cli_session = CLISession(runner, store, CONFIG_PATH)
+    cli_session = CLISession(settings)
     asyncio.run(cli_session.start())
 
 

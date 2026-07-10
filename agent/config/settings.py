@@ -35,10 +35,17 @@ class StorageSettings:
 
 
 @dataclass
+class ApprovalSettings:
+    auto_approve: list[str] = field(default_factory=lambda: ["think", "read_file", "list_directory"])
+    always_confirm: list[str] = field(default_factory=lambda: ["terminal", "write_file"])
+
+
+@dataclass
 class Settings:
     llm: LLMSettings = field(default_factory=LLMSettings)
     budget: BudgetSettings = field(default_factory=BudgetSettings)
     storage: StorageSettings = field(default_factory=StorageSettings)
+    approval: ApprovalSettings = field(default_factory=ApprovalSettings)
     config_dir: Path = field(default_factory=lambda: Path("."))
 
 
@@ -59,9 +66,11 @@ def _parse(data: dict[str, Any]) -> Settings:
     llm_data = data.get("llm", {})
     budget_data = data.get("budget", {})
     storage_data = data.get("storage", {})
+    approval_data = data.get("approval", {})
 
     return Settings(
         llm=LLMSettings(**{k: v for k, v in llm_data.items() if k in LLMSettings.__dataclass_fields__}),
         budget=BudgetSettings(**{k: v for k, v in budget_data.items() if k in BudgetSettings.__dataclass_fields__}),
         storage=StorageSettings(**{k: v for k, v in storage_data.items() if k in StorageSettings.__dataclass_fields__}),
+        approval=ApprovalSettings(**{k: v for k, v in approval_data.items() if k in ApprovalSettings.__dataclass_fields__}),
     )
