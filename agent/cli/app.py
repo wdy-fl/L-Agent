@@ -164,13 +164,13 @@ CONFIG_PATH = Path("workspace/config.yaml")
 @app.command()
 def main() -> None:
     """L-Agent CLI - Interactive AI Agent."""
-    if not CONFIG_PATH.exists():
+    try:
+        settings = load_settings(CONFIG_PATH)
+    except FileNotFoundError:
         console.print(
             f"[red]错误:缺少配置文件 {CONFIG_PATH},请参照 config.yaml.example 创建。[/red]"
         )
         raise typer.Exit(1)
-
-    settings = load_settings(CONFIG_PATH)
 
     db_path = Path(settings.storage.db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)

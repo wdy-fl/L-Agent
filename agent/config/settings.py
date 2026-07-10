@@ -42,12 +42,10 @@ class Settings:
     config_dir: Path = field(default_factory=lambda: Path("."))
 
 
-DEFAULT_CONFIG_PATH = Path("workspace/config.yaml")
-
-
-def load_settings(config_path: Path | None = None) -> Settings:
-    if config_path is None or not config_path.exists():
-        return Settings()
+def load_settings(config_path: Path) -> Settings:
+    """加载配置文件，config_path 必须显式指定；文件不存在时抛出 FileNotFoundError。"""
+    if not config_path.exists():
+        raise FileNotFoundError(config_path)
 
     with open(config_path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
