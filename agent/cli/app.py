@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import time
 from pathlib import Path
-from typing import Optional
 
 import typer
 from prompt_toolkit import PromptSession
@@ -17,6 +16,7 @@ from agent.cli.approval import ApprovalHandler
 from agent.cli.commands import CommandDispatcher
 from agent.cli.config import load_approval_config
 from agent.cli.render import Renderer
+from agent.config.settings import load_settings
 from agent.core.context import RunContext
 from agent.core.factory import build_runner
 from agent.core.runner import AgentRunner
@@ -33,7 +33,6 @@ from agent.core.events import (
 from agent.middleware.chain import MiddlewareChain  # noqa: F401
 from agent.steps.registry import StepRegistry  # noqa: F401
 from agent.storage.sqlite import SQLiteTimelineStore
-from agent.timeline.resume import resume
 from agent.timeline.session_factory import create_session_with_default_branch
 from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS
 
@@ -66,17 +65,11 @@ class CLISession:
         self._branch_id: str = ""
         self._interrupted = False
 
-    async def start(self, session_id: str | None = None) -> None:
+    async def start(self) -> None:
         """Start the CLI session."""
-        if session_id:
-            result = resume(self._store, session_id)
-            self._session_id = session_id
-            self._branch_id = result.branch_id
-            self._console.print(f"[green]Resumed session {session_id[:8]}...[/green]")
-        else:
-            session = create_session_with_default_branch(self._store)
-            self._session_id = session.session_id
-            self._branch_id = session.active_branch_id
+        session = create_session_with_default_branch(self._store)
+        self._session_id = session.session_id
+        self._branch_id = session.active_branch_id
 
         self._commands.session_id = self._session_id
         self._commands.branch_id = self._branch_id
@@ -165,22 +158,28 @@ class CLISession:
             self._render.show_status(ctx.budget.consumed_iterations, total_tokens, elapsed_ms)
 
 
+CONFIG_PATH = Path("workspace/config.yaml")
+
+
 @app.command()
-def main(
-    session: Optional[str] = typer.Option(None, "--session", "-s", help="Resume a session by ID"),
-    db: str = typer.Option("workspace/timeline.db", "--db", help="SQLite database path"),
-    config: Optional[str] = typer.Option(None, "--config", "-c", help="Config YAML path"),
-) -> None:
+def main() -> None:
     """L-Agent CLI - Interactive AI Agent."""
-    db_path = Path(db)
+    if not CONFIG_PATH.exists():
+        console.print(
+            f"[red]错误:缺少配置文件 {CONFIG_PATH},请参照 config.yaml.example 创建。[/red]"
+        )
+        raise typer.Exit(1)
+
+    settings = load_settings(CONFIG_PATH)
+
+    db_path = Path(settings.storage.db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     store = SQLiteTimelineStore(db_path)
 
-    config_path = Path(config) if config else None
-    runner = build_runner(config_path)
+    runner = build_runner(settings)
 
-    cli_session = CLISession(runner, store, config_path)
-    asyncio.run(cli_session.start(session_id=session))
+    cli_session = CLISession(runner, store, CONFIG_PATH)
+    asyncio.run(cli_session.start())
 
 
 if __name__ == "__main__":

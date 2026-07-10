@@ -12,7 +12,7 @@ pip install -e .
 
 ### 配置
 
-编辑 `workspace/config.yaml`（或 `~/.l-agent/config.yaml`）：
+编辑 `workspace/config.yaml`（参照 `config.yaml.example`）：
 
 ```yaml
 llm:

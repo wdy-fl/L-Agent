@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from agent.actions.model_call import make_llm_call_action, make_llm_stream_action
 from agent.actions.tool_call import make_tool_call_action
-from agent.config.settings import Settings, load_settings
+from agent.config.settings import Settings
 from agent.core.runner import AgentRunner
 from agent.llm.client import ModelConfig, OpenAICompatibleClient
 from agent.middleware.chain import MiddlewareChain
@@ -48,12 +46,10 @@ from agent.tools.builtin import create_builtin_registry, make_web_search_tool
 from agent.tools.dispatcher import ToolDispatcher
 
 
-def build_runner(config_path: Path | None = None) -> AgentRunner:
-    settings = load_settings(config_path)
-
+def build_runner(settings: Settings) -> AgentRunner:
     if not settings.llm.api_key:
         raise RuntimeError(
-            "llm.api_key is required. Set it in workspace/config.yaml or ~/.l-agent/config.yaml"
+            "llm.api_key is required. Set it in workspace/config.yaml"
         )
 
     model_config = ModelConfig(

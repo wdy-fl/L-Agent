@@ -30,16 +30,19 @@ class BudgetSettings:
 
 
 @dataclass
+class StorageSettings:
+    db_path: str = "workspace/timeline.db"
+
+
+@dataclass
 class Settings:
     llm: LLMSettings = field(default_factory=LLMSettings)
     budget: BudgetSettings = field(default_factory=BudgetSettings)
+    storage: StorageSettings = field(default_factory=StorageSettings)
     config_dir: Path = field(default_factory=lambda: Path("."))
 
 
-DEFAULT_CONFIG_PATHS = [
-    Path("workspace/config.yaml"),
-    Path.home() / ".l-agent" / "config.yaml",
-]
+DEFAULT_CONFIG_PATH = Path("workspace/config.yaml")
 
 
 def load_settings(config_path: Path | None = None) -> Settings:
@@ -58,17 +61,18 @@ def load_settings(config_path: Path | None = None) -> Settings:
 def _resolve_path(config_path: Path | None) -> Path | None:
     if config_path and config_path.exists():
         return config_path
-    for p in DEFAULT_CONFIG_PATHS:
-        if p.exists():
-            return p
+    if DEFAULT_CONFIG_PATH.exists():
+        return DEFAULT_CONFIG_PATH
     return None
 
 
 def _parse(data: dict[str, Any]) -> Settings:
     llm_data = data.get("llm", {})
     budget_data = data.get("budget", {})
+    storage_data = data.get("storage", {})
 
     return Settings(
         llm=LLMSettings(**{k: v for k, v in llm_data.items() if k in LLMSettings.__dataclass_fields__}),
         budget=BudgetSettings(**{k: v for k, v in budget_data.items() if k in BudgetSettings.__dataclass_fields__}),
+        storage=StorageSettings(**{k: v for k, v in storage_data.items() if k in StorageSettings.__dataclass_fields__}),
     )
