@@ -46,24 +46,15 @@ DEFAULT_CONFIG_PATH = Path("workspace/config.yaml")
 
 
 def load_settings(config_path: Path | None = None) -> Settings:
-    path = _resolve_path(config_path)
-    if path is None:
+    if config_path is None or not config_path.exists():
         return Settings()
 
-    with open(path, encoding="utf-8") as f:
+    with open(config_path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
 
     settings = _parse(data)
-    settings.config_dir = path.parent
+    settings.config_dir = config_path.parent
     return settings
-
-
-def _resolve_path(config_path: Path | None) -> Path | None:
-    if config_path and config_path.exists():
-        return config_path
-    if DEFAULT_CONFIG_PATH.exists():
-        return DEFAULT_CONFIG_PATH
-    return None
 
 
 def _parse(data: dict[str, Any]) -> Settings:
