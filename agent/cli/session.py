@@ -32,9 +32,6 @@ from agent.storage.sqlite import SQLiteTimelineStore
 from agent.timeline.session_factory import create_session_with_default_branch
 from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS
 
-console = Console()
-
-
 class CLISession:
     """Manages one interactive CLI session."""
 
@@ -48,14 +45,14 @@ class CLISession:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self._store = SQLiteTimelineStore(db_path)
 
-        self._console = console
-        self._render = Renderer(console)
+        self._console = Console()
+        self._render = Renderer(self._console)
 
         auto_approve = set(settings.approval.auto_approve) | AUTO_APPROVE_TOOLS
         always_confirm = set(settings.approval.always_confirm) | ALWAYS_CONFIRM_TOOLS
-        self._approval = ApprovalHandler(console, auto_approve=auto_approve)
+        self._approval = ApprovalHandler(self._console, auto_approve=auto_approve)
         self._always_confirm = always_confirm
-        self._commands = CommandDispatcher(self._store, console)
+        self._commands = CommandDispatcher(self._store, self._console)
 
         self._session_id: str = ""
         self._branch_id: str = ""
