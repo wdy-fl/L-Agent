@@ -6,7 +6,6 @@ import asyncio
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
 from agent.cli.loop import CLILoop
 from agent.config.settings import load_settings
@@ -22,10 +21,7 @@ def main() -> None:
     try:
         settings = load_settings(CONFIG_PATH)
     except FileNotFoundError:
-        console = Console()
-        console.print(
-            f"[red]错误:缺少配置文件 {CONFIG_PATH},请参照 config.yaml.example 创建。[/red]"
-        )
+        print(f"错误: 缺少配置文件 {CONFIG_PATH}，请参照 config.yaml.example 创建。")
         raise typer.Exit(1)
 
     cli_loop = CLILoop(settings)
