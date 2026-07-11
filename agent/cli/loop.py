@@ -73,8 +73,8 @@ class CLILoop:
         self._branch_id: str = ""
         self._interrupted = False
 
-    async def start(self) -> None:
-        """Start the CLI session."""
+    def _init_agent(self) -> None:
+        """Initialize agent components: client, tools, session, context, and runner."""
         model_config = ModelConfig(
             model=self._settings.llm.model,
             api_base=self._settings.llm.api_base,
@@ -90,7 +90,6 @@ class CLILoop:
                 make_web_search_tool(self._settings.llm.api_base, self._settings.llm.api_key)
             )
         dispatcher = ToolDispatcher(tool_registry)
-
 
         session = create_session_with_default_branch(self._store)
         self._session_id = session.session_id
@@ -141,6 +140,10 @@ class CLILoop:
         self._ctx.client = client
         self._ctx.dispatcher = dispatcher
         self._runner = build_runner(self._ctx)
+
+    async def start(self) -> None:
+        """Start the CLI session."""
+        self._init_agent()
 
         self._console.print()
         self._console.print("[bold cyan]  L-Agent[/bold cyan] [dim]v0.1.0[/dim]")
