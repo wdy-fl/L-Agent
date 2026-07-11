@@ -2,23 +2,42 @@
 
 from __future__ import annotations
 
+import uuid
+from pathlib import Path
+
 from rich.console import Console
 from rich.table import Table
 
 from agent.cli.select import select_prompt
+from agent.core.context import BudgetState, RunContext
 from agent.storage.sqlite import SQLiteTimelineStore
-from agent.timeline.models import CheckpointType
+from agent.timeline.models import CheckpointType, Message
 from agent.timeline.resume import ResumeResult, resume
 from agent.timeline.rewind import RewindResult, rewind
 from agent.timeline.session_factory import create_session_with_default_branch
 
 
+def _message_to_dict(message: Message) -> dict:
+    data: dict = {"role": message.role, "content": message.content}
+    if message.tool_calls:
+        data["tool_calls"] = message.tool_calls
+    if message.tool_call_id:
+        data["tool_call_id"] = message.tool_call_id
+    return data
+
+
 class CommandDispatcher:
     """Handles / prefixed commands."""
 
-    def __init__(self, store: SQLiteTimelineStore, console: Console) -> None:
+    def __init__(
+        self,
+        store: SQLiteTimelineStore,
+        console: Console,
+        system_prompt_path: str = "workspace/AGENT.md",
+    ) -> None:
         self._store = store
         self._console = console
+        self._system_prompt_path = system_prompt_path
         self._session_id: str = ""
         self._branch_id: str = ""
 
@@ -38,7 +57,7 @@ class CommandDispatcher:
     def branch_id(self, value: str) -> None:
         self._branch_id = value
 
-    async def dispatch(self, command: str) -> bool:
+    async def dispatch(self, command: str, ctx: RunContext) -> bool:
         """Dispatch a / command. Returns True if handled, False if not a command."""
         parts = command.strip().split(maxsplit=1)
         cmd = parts[0].lower()
@@ -57,16 +76,41 @@ class CommandDispatcher:
         if handler is None:
             self._console.print(f"[red]Unknown command: {cmd}[/red]")
             return True
-        await handler(arg)
+        await handler(arg, ctx)
         return True
 
-    async def _cmd_new(self, arg: str) -> None:
+    async def _cmd_new(self, arg: str, ctx: RunContext) -> None:
         session = create_session_with_default_branch(self._store)
         self._session_id = session.session_id
         self._branch_id = session.active_branch_id
+
+        ctx.session_id = session.session_id
+        ctx.branch_id = session.active_branch_id
+
+        system_prompt = Path(self._system_prompt_path).read_text(encoding="utf-8")
+        ctx.messages = [{"role": "system", "content": system_prompt}]
+
+        seq = self._store.get_latest_sequence(ctx.branch_id) + 1
+        self._store.append_message(
+            Message(
+                message_id=str(uuid.uuid4()),
+                session_id=ctx.session_id,
+                branch_id=ctx.branch_id,
+                run_id="",
+                sequence=seq,
+                role="system",
+                content=system_prompt,
+            )
+        )
+
+        ctx.budget = BudgetState(
+            max_iterations=ctx.budget.max_iterations,
+            max_tokens=ctx.budget.max_tokens,
+        )
+
         self._console.print("[green]New session created.[/green]")
 
-    async def _cmd_list(self, arg: str) -> None:
+    async def _cmd_list(self, arg: str, ctx: RunContext) -> None:
         sessions = self._store.list_sessions()
         if not sessions:
             self._console.print("[dim]No sessions found.[/dim]")
@@ -87,23 +131,41 @@ class CommandDispatcher:
         result = resume(self._store, selected_session_id)
         self._session_id = selected_session_id
         self._branch_id = result.branch_id
+
+        ctx.session_id = selected_session_id
+        ctx.branch_id = result.branch_id
+        ctx.messages = [_message_to_dict(m) for m in result.messages]
+        ctx.budget = BudgetState(
+            max_iterations=ctx.budget.max_iterations,
+            max_tokens=ctx.budget.max_tokens,
+        )
+
         self._console.print(f"[green]Resumed session {selected_session_id[:8]}...[/green]")
 
-    async def _cmd_resume(self, arg: str) -> None:
+    async def _cmd_resume(self, arg: str, ctx: RunContext) -> None:
         if arg:
             result = resume(self._store, arg)
             self._session_id = arg
             self._branch_id = result.branch_id
+
+            ctx.session_id = arg
+            ctx.branch_id = result.branch_id
+            ctx.messages = [_message_to_dict(m) for m in result.messages]
+            ctx.budget = BudgetState(
+                max_iterations=ctx.budget.max_iterations,
+                max_tokens=ctx.budget.max_tokens,
+            )
+
             self._console.print(f"[green]Resumed session {arg[:8]}...[/green]")
             return
-        await self._cmd_list("")
+        await self._cmd_list("", ctx)
 
-    async def _cmd_rewind(self, arg: str) -> None:
-        if not self._branch_id:
+    async def _cmd_rewind(self, arg: str, ctx: RunContext) -> None:
+        if not ctx.branch_id:
             self._console.print("[red]No active session.[/red]")
             return
 
-        checkpoints = self._store.get_checkpoints_by_branch(self._branch_id)
+        checkpoints = self._store.get_checkpoints_by_branch(ctx.branch_id)
         user_snapshots = [cp for cp in checkpoints if cp.type == CheckpointType.user_snapshot]
 
         if not user_snapshots:
@@ -116,25 +178,33 @@ class CommandDispatcher:
             return
 
         selected_cp = user_snapshots[choice]
-        result = rewind(self._store, self._session_id, selected_cp.checkpoint_id)
+        result = rewind(self._store, ctx.session_id, selected_cp.checkpoint_id)
         self._branch_id = result.new_branch_id
+
+        ctx.branch_id = result.new_branch_id
+        ctx.messages = [_message_to_dict(m) for m in result.messages]
+        ctx.budget = BudgetState(
+            max_iterations=ctx.budget.max_iterations,
+            max_tokens=ctx.budget.max_tokens,
+        )
+
         self._console.print(f"[green]Rewound. New branch: {result.new_branch_id[:8]}...[/green]")
 
-    async def _cmd_status(self, arg: str) -> None:
+    async def _cmd_status(self, arg: str, ctx: RunContext) -> None:
         table = Table(title="Session Status", show_header=False)
         table.add_column("Key", style="bold")
         table.add_column("Value")
-        table.add_row("Session", self._session_id[:8] + "..." if self._session_id else "none")
-        table.add_row("Branch", self._branch_id[:8] + "..." if self._branch_id else "none")
+        table.add_row("Session", ctx.session_id[:8] + "..." if ctx.session_id else "none")
+        table.add_row("Branch", ctx.branch_id[:8] + "..." if ctx.branch_id else "none")
 
-        if self._branch_id:
-            msgs = self._store.get_messages_by_branch(self._branch_id)
+        if ctx.branch_id:
+            msgs = self._store.get_messages_by_branch(ctx.branch_id)
             runs = len([m for m in msgs if m.role == "user"])
             table.add_row("Turns", str(runs))
 
         self._console.print(table)
 
-    async def _cmd_help(self, arg: str) -> None:
+    async def _cmd_help(self, arg: str, ctx: RunContext) -> None:
         self._console.print("[bold]Available commands:[/bold]")
         self._console.print("  /new      Create a new session")
         self._console.print("  /list     List and select a session")

@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import uuid
 from pathlib import Path
-from typing import Any
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
@@ -32,19 +30,8 @@ from agent.core.events import (
 from agent.middleware.chain import MiddlewareChain  # noqa: F401
 from agent.steps.registry import StepRegistry  # noqa: F401
 from agent.storage.sqlite import SQLiteTimelineStore
-from agent.timeline.models import Message
-from agent.timeline.resume import resume
 from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS, create_builtin_registry, make_web_search_tool
 from agent.tools.dispatcher import ToolDispatcher
-
-
-def _message_to_dict(message: Message) -> dict[str, Any]:
-    data: dict[str, Any] = {"role": message.role, "content": message.content}
-    if message.tool_calls:
-        data["tool_calls"] = message.tool_calls
-    if message.tool_call_id:
-        data["tool_call_id"] = message.tool_call_id
-    return data
 
 class CLILoop:
     """Manages one interactive CLI session."""
@@ -88,49 +75,25 @@ class CLILoop:
             )
         tool_dispatcher = ToolDispatcher(tool_registry)
 
-        await self._command_dispatcher._cmd_new("")
-        session_id = self._command_dispatcher.session_id
-        branch_id = self._command_dispatcher.branch_id
-
-        self._logger = AgentLogger(
-            logs_dir=Path("workspace/logs"),
-            session_id=session_id,
-        )
-
+        # Create a bare ctx shell, then let /new populate session_id, branch_id, messages.
         self._ctx = RunContext(
-            session_id=session_id,
-            branch_id=branch_id,
             timeline_store=self._store,
             auto_approve_tools=self._approval._auto_approve,
             always_confirm_tools=self._always_confirm,
-            logger=self._logger,
         )
         self._ctx.budget = BudgetState(
             max_iterations=self._settings.budget.max_iterations,
             max_tokens=self._settings.budget.max_tokens,
         )
+        await self._command_dispatcher.dispatch("/new", self._ctx)
 
-        history = resume(self._store, self._session_id)
-        if history.messages:
-            self._ctx.messages = [_message_to_dict(message) for message in history.messages]
-        else:
-            system_prompt = Path("workspace/AGENT.md").read_text(encoding="utf-8")
-            self._ctx.messages.append({"role": "system", "content": system_prompt})
-            seq = self._store.get_latest_sequence(self._branch_id) + 1
-            self._store.append_message(
-                Message(
-                    message_id=str(uuid.uuid4()),
-                    session_id=self._session_id,
-                    branch_id=self._branch_id,
-                    run_id="",
-                    sequence=seq,
-                    role="system",
-                    content=system_prompt,
-                )
-            )
+        self._logger = AgentLogger(
+            logs_dir=Path("workspace/logs"),
+            session_id=self._ctx.session_id,
+        )
+        self._ctx.logger = self._logger
 
         self._ctx.available_tools = tool_registry.list_schemas()
-
         self._ctx.client = client
         self._ctx.dispatcher = tool_dispatcher
         self._runner = build_runner(self._ctx)
@@ -165,7 +128,7 @@ class CLILoop:
                 continue
 
             if user_input.strip().startswith("/"):
-                await self._command_dispatcher.dispatch(user_input.strip())
+                await self._command_dispatcher.dispatch(user_input.strip(), self._ctx)
                 continue
 
             await self._handle_run(user_input.strip())
