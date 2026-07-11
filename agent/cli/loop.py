@@ -68,6 +68,20 @@ class CLILoop:
         self._commands.session_id = self._session_id
         self._commands.branch_id = self._branch_id
 
+        self._logger = AgentLogger(
+            logs_dir=Path("workspace/logs"),
+            session_id=self._session_id,
+        )
+
+        self._ctx = RunContext(
+            session_id=self._session_id,
+            branch_id=self._branch_id,
+            timeline_store=self._store,
+            auto_approve_tools=self._approval._auto_approve,
+            always_confirm_tools=self._always_confirm,
+            logger=self._logger,
+        )
+
         self._console.print()
         self._console.print("[bold cyan]  L-Agent[/bold cyan] [dim]v0.1.0[/dim]")
         self._console.print("[dim]  Type your message to chat, /help for commands, Ctrl+C to exit.[/dim]")
@@ -109,26 +123,13 @@ class CLILoop:
         """Execute an agent run and render events."""
         self._interrupted = False
 
-        logger = AgentLogger(
-            logs_dir=Path("workspace/logs"),
-            session_id=self._session_id,
-        )
-
-        ctx = RunContext(
-            input=user_input,
-            session_id=self._session_id,
-            branch_id=self._branch_id,
-            timeline_store=self._store,
-            auto_approve_tools=self._approval._auto_approve,
-            always_confirm_tools=self._always_confirm,
-            logger=logger,
-        )
+        self._ctx.input = user_input
 
         start_time = time.time()
 
-        async for event in self._runner.run(ctx):
+        async for event in self._runner.run(self._ctx):
             if self._interrupted:
-                ctx.interrupted = True
+                self._ctx.interrupted = True
 
             match event:
                 case Token(text=t):
@@ -151,9 +152,9 @@ class CLILoop:
                     pass
 
         elapsed_ms = (time.time() - start_time) * 1000
-        total_tokens = ctx.budget.consumed_total_tokens
+        total_tokens = self._ctx.budget.consumed_total_tokens
 
-        if ctx.interrupted:
+        if self._ctx.interrupted:
             self._render.show_interrupted()
-        elif ctx.status == "completed":
-            self._render.show_status(ctx.budget.consumed_iterations, total_tokens, elapsed_ms)
+        elif self._ctx.status == "completed":
+            self._render.show_status(self._ctx.budget.consumed_iterations, total_tokens, elapsed_ms)
