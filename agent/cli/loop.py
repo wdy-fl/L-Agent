@@ -106,7 +106,7 @@ class CLILoop:
                     message_id=str(uuid.uuid4()),
                     session_id=self._session_id,
                     branch_id=self._branch_id,
-                    run_id=str(uuid.uuid4()),
+                    run_id="",
                     sequence=seq,
                     role="system",
                     content=system_prompt,
