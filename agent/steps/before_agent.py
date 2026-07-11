@@ -3,7 +3,6 @@ from __future__ import annotations
 import time
 from typing import Any
 import uuid
-from pathlib import Path
 
 from agent.core.context import BudgetState, RunContext
 from agent.core.events import RunStart
@@ -12,15 +11,6 @@ from agent.llm.client import ModelConfig
 from agent.steps.base import Step
 from agent.timeline.models import AgentRun, Checkpoint, CheckpointType, Message, RunStatus
 from agent.tools.registry import ToolRegistry
-from agent.timeline.resume import resume
-
-def _message_to_dict(message: Message) -> dict[str, Any]:
-    data: dict[str, Any] = {"role": message.role, "content": message.content}
-    if message.tool_calls:
-        data["tool_calls"] = message.tool_calls
-    if message.tool_call_id:
-        data["tool_call_id"] = message.tool_call_id
-    return data
 
 
 class RunStart(Step):
@@ -47,36 +37,6 @@ class RunStart(Step):
                 input=ctx.input,
             )
         return [RunStart()]
-
-
-class ContextInitialize(Step):
-    """Create RunContext basic fields, initialize empty iterations list."""
-
-    def __init__(self) -> None:
-        super().__init__("context.initialize", HookPhase.before_agent)
-
-    def run(self, ctx: RunContext) -> list[Any]:
-        history = resume(ctx.timeline_store, ctx.session_id)
-        if history.messages:
-            ctx.messages = [_message_to_dict(message) for message in history.messages]
-            return []
-        
-        system_prompt = Path("workspace/AGENT.md").read_text(encoding="utf-8")
-        ctx.messages.append({"role": "system", "content": system_prompt})
-        seq = ctx.timeline_store.get_latest_sequence(ctx.branch_id) + 1
-        ctx.timeline_store.append_message(
-            Message(
-                message_id=str(uuid.uuid4()),
-                session_id=ctx.session_id,
-                branch_id=ctx.branch_id,
-                run_id=ctx.run_id,
-                sequence=seq,
-                role="system",
-                content=system_prompt,
-            )
-        )
-
-        return []
 
 
 class ToolsSnapshotAvailableTools(Step):
