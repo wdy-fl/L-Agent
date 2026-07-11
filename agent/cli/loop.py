@@ -69,8 +69,6 @@ class CLILoop:
         self._always_confirm = always_confirm
         self._commands = CommandDispatcher(self._store, self._console)
 
-        self._session_id: str = ""
-        self._branch_id: str = ""
         self._interrupted = False
 
     def _init_agent(self) -> None:
@@ -92,20 +90,20 @@ class CLILoop:
         dispatcher = ToolDispatcher(tool_registry)
 
         session = create_session_with_default_branch(self._store)
-        self._session_id = session.session_id
-        self._branch_id = session.active_branch_id
+        session_id = session.session_id
+        branch_id = session.active_branch_id
 
-        self._commands.session_id = self._session_id
-        self._commands.branch_id = self._branch_id
+        self._commands.session_id = session_id
+        self._commands.branch_id = branch_id
 
         self._logger = AgentLogger(
             logs_dir=Path("workspace/logs"),
-            session_id=self._session_id,
+            session_id=session_id,
         )
 
         self._ctx = RunContext(
-            session_id=self._session_id,
-            branch_id=self._branch_id,
+            session_id=session_id,
+            branch_id=branch_id,
             timeline_store=self._store,
             auto_approve_tools=self._approval._auto_approve,
             always_confirm_tools=self._always_confirm,
@@ -172,8 +170,6 @@ class CLILoop:
 
             if user_input.strip().startswith("/"):
                 await self._commands.dispatch(user_input.strip())
-                self._session_id = self._commands.session_id
-                self._branch_id = self._commands.branch_id
                 continue
 
             await self._handle_run(user_input.strip())
