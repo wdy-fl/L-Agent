@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from agent.llm.client import ModelConfig, ModelRequest, ModelResponse
 
 if TYPE_CHECKING:
+    from agent.logging.logger import AgentLogger
     from agent.timeline.store import TimelineStore
 
 
@@ -64,3 +65,6 @@ class RunContext:
 
     # --- timeline store ---
     timeline_store: TimelineStore | None = None
+
+    # --- logging ---
+    logger: AgentLogger | None = None

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import time
+import traceback
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any, Callable, Awaitable
@@ -47,6 +49,15 @@ class AgentRunner:
         self._model_stream = model_stream
 
     async def run(self, ctx: RunContext) -> AsyncGenerator[AgentEvent, None]:
+        t0 = time.time()
+        if ctx.logger:
+            ctx.logger.log(
+                event="run.start",
+                session_id=ctx.session_id,
+                branch_id=ctx.branch_id,
+                run_id=ctx.run_id,
+                input=ctx.input,
+            )
         yield RunStart()
         try:
             self._run_phase(HookPhase.before_agent, ctx)
@@ -59,9 +70,27 @@ class AgentRunner:
         except Exception as exc:
             ctx.errors.append(exc)
             ctx.status = "failed"
+            if ctx.logger:
+                ctx.logger.log(
+                    event="run.error",
+                    run_id=ctx.run_id,
+                    error_type=type(exc).__name__,
+                    error_message=str(exc),
+                    traceback=traceback.format_exc(),
+                )
             yield RunError(error=exc)
         finally:
             self._run_phase(HookPhase.after_agent, ctx)
+        elapsed_ms = (time.time() - t0) * 1000
+        if ctx.logger:
+            ctx.logger.log(
+                event="run.done",
+                run_id=ctx.run_id,
+                status=ctx.status,
+                elapsed_ms=round(elapsed_ms, 1),
+                total_iterations=ctx.budget.consumed_iterations,
+                total_tokens=ctx.budget.consumed_total_tokens,
+            )
         yield RunDone(status=ctx.status, result=ctx.final_result)
 
     async def _react_loop(self, ctx: RunContext) -> AsyncGenerator[AgentEvent, None]:
@@ -74,6 +103,17 @@ class AgentRunner:
             yield ModelStart()
 
             if self._model_stream:
+                t_model = time.time()
+                if ctx.logger:
+                    req = ctx.current_model_request
+                    ctx.logger.log(
+                        event="model.start",
+                        run_id=ctx.run_id,
+                        iteration=ctx.budget.consumed_iterations,
+                        messages_count=len(req.messages) if req else 0,
+                        tools_count=len(req.tools) if req else 0,
+                    )
+
                 response = None
                 async for item in self._model_stream(ctx):
                     if isinstance(item, str):
@@ -84,6 +124,24 @@ class AgentRunner:
                     raise RuntimeError("stream ended without ModelResponse")
                 ctx.current_model_response = response
                 self._record_checkpoint(ActionName.model_call, "completed", ctx)
+
+                if ctx.logger and response is not None:
+                    elapsed_ms = (time.time() - t_model) * 1000
+                    ctx.logger.log(
+                        event="model.done",
+                        run_id=ctx.run_id,
+                        iteration=ctx.budget.consumed_iterations,
+                        elapsed_ms=round(elapsed_ms, 1),
+                        tokens_in=response.usage.input_tokens,
+                        tokens_out=response.usage.output_tokens,
+                        finish_reason=response.finish_reason,
+                        content=response.content,
+                        reasoning_content=response.reasoning_content,
+                        tool_calls=[
+                            {"id": tc.id, "name": tc.name, "arguments": tc.arguments}
+                            for tc in response.tool_calls
+                        ],
+                    )
             else:
                 await self._execute_action(ActionName.model_call, ctx, self._model_call)
 

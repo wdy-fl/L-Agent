@@ -16,6 +16,7 @@ from agent.cli.render import Renderer
 from agent.config.settings import Settings
 from agent.core.context import RunContext
 from agent.core.factory import build_runner
+from agent.logging.logger import AgentLogger
 from agent.core.events import (
     ApprovalRequest,
     ModelDone,
@@ -107,6 +108,12 @@ class CLILoop:
     async def _handle_run(self, user_input: str) -> None:
         """Execute an agent run and render events."""
         self._interrupted = False
+
+        logger = AgentLogger(
+            logs_dir=Path("workspace/logs"),
+            session_id=self._session_id,
+        )
+
         ctx = RunContext(
             input=user_input,
             session_id=self._session_id,
@@ -114,6 +121,7 @@ class CLILoop:
             timeline_store=self._store,
             auto_approve_tools=self._approval._auto_approve,
             always_confirm_tools=self._always_confirm,
+            logger=logger,
         )
 
         start_time = time.time()

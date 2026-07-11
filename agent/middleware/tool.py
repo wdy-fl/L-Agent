@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any, Callable
 
 from agent.core.context import RunContext
@@ -25,7 +26,40 @@ class AuditRecord(Middleware):
         super().__init__("audit.record", ActionName.tool_call)
 
     def __call__(self, ctx: RunContext, next_call: Callable[[], Any]) -> Any:
-        return next_call()
+        if ctx.logger is None:
+            return next_call()
+
+        t0 = time.time()
+
+        # Build a lookup: call_id -> tool_name for matching results
+        call_id_to_name: dict[str, str] = {}
+        plan = ctx.current_tool_plan
+        if plan and hasattr(plan, "calls"):
+            for tc in plan.calls:
+                call_id_to_name[tc.call_id] = tc.tool_name
+                ctx.logger.log(
+                    event="tool.start",
+                    run_id=ctx.run_id,
+                    tool_name=tc.tool_name,
+                    arguments=tc.arguments,
+                )
+
+        result = next_call()
+
+        elapsed_ms = (time.time() - t0) * 1000
+        if isinstance(result, list):
+            for r in result:
+                if isinstance(r, ToolResult):
+                    tool_name = call_id_to_name.get(r.call_id, r.call_id)
+                    ctx.logger.log(
+                        event="tool.done",
+                        run_id=ctx.run_id,
+                        tool_name=tool_name,
+                        elapsed_ms=round(elapsed_ms, 1),
+                        status=r.status.value,
+                        result=r.content,
+                    )
+        return result
 
 
 class ResultLimitGuard(Middleware):
