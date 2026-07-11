@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from agent.actions.model_call import make_llm_call_action, make_llm_stream_action
 from agent.actions.tool_call import make_tool_call_action
+from agent.core.context import RunContext
 from agent.core.runner import AgentRunner
-from agent.llm.client import OpenAICompatibleClient
 from agent.middleware.chain import MiddlewareChain
 from agent.middleware.model import BudgetGuard, TraceRecord
 from agent.middleware.tool import ApprovalGuard, AuditRecord, ResultLimitGuard
@@ -39,13 +39,9 @@ from agent.steps.before_tool import (
     ApprovalPrepareRequests,
 )
 from agent.steps.registry import StepRegistry
-from agent.tools.dispatcher import ToolDispatcher
 
 
-def build_runner(
-    client: OpenAICompatibleClient,
-    dispatcher: ToolDispatcher,
-) -> AgentRunner:
+def build_runner(ctx: RunContext) -> AgentRunner:
     reg = StepRegistry()
     # ---- before_agent ----
     reg.register(RunStart())
@@ -89,7 +85,7 @@ def build_runner(
     return AgentRunner(
         registry=reg,
         middleware_chain=chain,
-        model_call=make_llm_call_action(client),
-        tool_call=make_tool_call_action(dispatcher),
-        model_stream=make_llm_stream_action(client),
+        model_call=make_llm_call_action(ctx.client),
+        tool_call=make_tool_call_action(ctx.dispatcher),
+        model_stream=make_llm_stream_action(ctx.client),
     )
