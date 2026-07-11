@@ -56,6 +56,12 @@ def load_settings(config_path: Path) -> Settings:
         data = yaml.safe_load(f) or {}
 
     settings = _parse(data)
+
+    if not settings.llm.api_key:
+        raise RuntimeError(
+            "llm.api_key is required. Set it in workspace/config.yaml"
+        )
+
     return settings
 
 

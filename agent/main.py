@@ -23,6 +23,9 @@ def main() -> None:
     except FileNotFoundError:
         print(f"错误: 缺少配置文件 {CONFIG_PATH}，请参照 config.yaml.example 创建。")
         raise typer.Exit(1)
+    except RuntimeError as e:
+        print(f"错误: {e}")
+        raise typer.Exit(1)
 
     cli_loop = CLILoop(settings)
     asyncio.run(cli_loop.start())

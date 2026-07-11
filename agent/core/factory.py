@@ -46,11 +46,6 @@ from agent.tools.dispatcher import ToolDispatcher
 
 
 def build_runner(settings: Settings) -> AgentRunner:
-    if not settings.llm.api_key:
-        raise RuntimeError(
-            "llm.api_key is required. Set it in workspace/config.yaml"
-        )
-
     model_config = ModelConfig(
         model=settings.llm.model,
         api_base=settings.llm.api_base,
