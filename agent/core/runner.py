@@ -56,10 +56,9 @@ class AgentRunner:
                 yield event
             if ctx.interrupted:
                 ctx.status = "interrupted"
-            elif not ctx.errors:
+            else:
                 ctx.status = "completed"
         except Exception as exc:
-            ctx.errors.append(exc)
             ctx.status = "failed"
             if ctx.logger:
                 ctx.logger.log(

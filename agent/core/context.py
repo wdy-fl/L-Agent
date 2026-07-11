@@ -35,7 +35,6 @@ class RunContext:
     branch_id: str = ""
     run_id: str = ""
 
-    errors: list[Exception] = field(default_factory=list)
     interrupted: bool = False
 
     # --- messages ---
