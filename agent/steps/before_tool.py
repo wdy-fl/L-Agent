@@ -16,10 +16,10 @@ class ToolCallsExtract(Step):
     def __init__(self) -> None:
         super().__init__("tool_calls.extract", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
-            return
+            return []
 
         calls: list[ToolCall] = []
         for tc in resp.tool_calls:
@@ -31,6 +31,8 @@ class ToolCallsExtract(Step):
 
         ctx.current_tool_plan = ToolPlan(calls=calls)
 
+        return []
+
 
 class ToolCallsParseArguments(Step):
     """Parse JSON string arguments into dict; mark parse failures as error."""
@@ -38,14 +40,14 @@ class ToolCallsParseArguments(Step):
     def __init__(self) -> None:
         super().__init__("tool_calls.parse_arguments", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
-            return
+            return []
 
         plan: ToolPlan | None = ctx.current_tool_plan
         if plan is None:
-            return
+            return []
 
         for i, call in enumerate(plan.calls):
             raw_args = resp.tool_calls[i].arguments
@@ -61,6 +63,8 @@ class ToolCallsParseArguments(Step):
             except json.JSONDecodeError as exc:
                 call.error = f"Failed to parse arguments: {exc}"
 
+        return []
+
 
 class ToolCallsValidateSchema(Step):
     """Validate parsed arguments against tool's parameters_schema."""
@@ -68,10 +72,10 @@ class ToolCallsValidateSchema(Step):
     def __init__(self) -> None:
         super().__init__("tool_calls.validate_schema", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         plan: ToolPlan | None = ctx.current_tool_plan
         if plan is None:
-            return
+            return []
 
         available_tools = self._get_available_tools(ctx)
 
@@ -100,6 +104,8 @@ class ToolCallsValidateSchema(Step):
                     call.error = f"Unknown parameter: {param_name}"
                     break
 
+        return []
+
     def _get_available_tools(self, ctx: RunContext) -> dict[str, Any]:
         tools_map: dict[str, Any] = {}
         for tool_schema in ctx.available_tools:
@@ -116,10 +122,10 @@ class ToolCallsResolveTools(Step):
     def __init__(self) -> None:
         super().__init__("tool_calls.resolve_tools", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         plan: ToolPlan | None = ctx.current_tool_plan
         if plan is None:
-            return
+            return []
 
         available_names = self._get_available_tool_names(ctx)
 
@@ -128,6 +134,8 @@ class ToolCallsResolveTools(Step):
                 continue
             if call.tool_name not in available_names:
                 call.error = f"Tool not available: {call.tool_name}"
+
+        return []
 
     def _get_available_tool_names(self, ctx: RunContext) -> set[str]:
         names: set[str] = set()
@@ -145,11 +153,13 @@ class ToolPlanBuildSerial(Step):
     def __init__(self) -> None:
         super().__init__("tool_plan.build_serial", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         plan: ToolPlan | None = ctx.current_tool_plan
         if plan is None:
-            return
+            return []
         plan.execution_mode = "serial"
+
+        return []
 
 
 class ApprovalPrepareRequests(Step):
@@ -158,5 +168,6 @@ class ApprovalPrepareRequests(Step):
     def __init__(self) -> None:
         super().__init__("approval.prepare_requests", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         pass
+        return []

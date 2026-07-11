@@ -16,7 +16,6 @@ from agent.core.events import (
     ModelDone,
     RunDone,
     RunError,
-    RunStart,
     Token,
     ToolDone,
     ToolStart,
@@ -50,17 +49,9 @@ class AgentRunner:
 
     async def run(self, ctx: RunContext) -> AsyncGenerator[AgentEvent, None]:
         t0 = time.time()
-        if ctx.logger:
-            ctx.logger.log(
-                event="run.start",
-                session_id=ctx.session_id,
-                branch_id=ctx.branch_id,
-                run_id=ctx.run_id,
-                input=ctx.input,
-            )
-        yield RunStart()
         try:
-            self._run_phase(HookPhase.before_agent, ctx)
+            for event in self._run_phase(HookPhase.before_agent, ctx):
+                yield event
             async for event in self._react_loop(ctx):
                 yield event
             if ctx.interrupted:
@@ -80,7 +71,8 @@ class AgentRunner:
                 )
             yield RunError(error=exc)
         finally:
-            self._run_phase(HookPhase.after_agent, ctx)
+            for event in self._run_phase(HookPhase.after_agent, ctx):
+                yield event
         elapsed_ms = (time.time() - t0) * 1000
         if ctx.logger:
             ctx.logger.log(
@@ -98,7 +90,8 @@ class AgentRunner:
             if ctx.interrupted or ctx.budget.exhausted:
                 break
 
-            self._run_phase(HookPhase.before_model, ctx)
+            for event in self._run_phase(HookPhase.before_model, ctx):
+                yield event
 
             yield ModelStart()
 
@@ -147,10 +140,12 @@ class AgentRunner:
 
             yield ModelDone(response=ctx.current_model_response or ModelResponse())
 
-            self._run_phase(HookPhase.after_model, ctx)
+            for event in self._run_phase(HookPhase.after_model, ctx):
+                yield event
 
             if ctx.has_tool_calls:
-                self._run_phase(HookPhase.before_tool, ctx)
+                for event in self._run_phase(HookPhase.before_tool, ctx):
+                    yield event
 
                 plan = ctx.current_tool_plan
                 if plan and hasattr(plan, "calls") and plan.calls and ctx.always_confirm_tools:
@@ -193,7 +188,8 @@ class AgentRunner:
                 for tool_result in self._get_tool_results(ctx):
                     yield ToolDone(tool_name=tool_result.get("name", ""), result=tool_result.get("content"))
 
-                self._run_phase(HookPhase.after_tool, ctx)
+                for event in self._run_phase(HookPhase.after_tool, ctx):
+                    yield event
                 ctx.has_tool_calls = False
             else:
                 break
@@ -214,9 +210,11 @@ class AgentRunner:
             return [{"name": getattr(r, "call_id", ""), "content": getattr(r, "content", str(r))} for r in results]
         return []
 
-    def _run_phase(self, phase: HookPhase, ctx: RunContext) -> None:
+    def _run_phase(self, phase: HookPhase, ctx: RunContext) -> list[AgentEvent]:
+        events: list[AgentEvent] = []
         for step in self._registry.get_steps(phase):
-            step.run(ctx)
+            events.extend(step.run(ctx))
+        return events
 
     async def _execute_action(
         self, action_name: ActionName, ctx: RunContext, action: Callable

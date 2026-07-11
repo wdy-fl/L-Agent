@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 from agent.core.context import BudgetState, RunContext
+from agent.core.events import RunStart
 from agent.core.lifecycle import HookPhase
 from agent.llm.client import ModelConfig
 from agent.steps.base import Step
@@ -22,19 +23,28 @@ def _message_to_dict(message: Message) -> dict[str, Any]:
 
 
 class RunCreate(Step):
-    """Write AgentRun record to TimelineStore (status=running)."""
+    """Write AgentRun record to TimelineStore (status=running), log run.start, emit RunStart event."""
 
     def __init__(self) -> None:
         super().__init__("run.create", HookPhase.before_agent)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         store = ctx.timeline_store
         if store is None:
-            return
+            return []
         ctx.run_id = str(uuid.uuid4())
         run = AgentRun(run_id=ctx.run_id, session_id=ctx.session_id, branch_id=ctx.branch_id, status=RunStatus.running)
         store.create_run(run)
         ctx.status = "running"
+        if ctx.logger:
+            ctx.logger.log(
+                event="run.start",
+                session_id=ctx.session_id,
+                branch_id=ctx.branch_id,
+                run_id=ctx.run_id,
+                input=ctx.input,
+            )
+        return [RunStart()]
 
 
 class ContextInitialize(Step):
@@ -43,11 +53,11 @@ class ContextInitialize(Step):
     def __init__(self) -> None:
         super().__init__("context.initialize", HookPhase.before_agent)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         history = resume(ctx.timeline_store, ctx.session_id)
         if history.messages:
             ctx.messages = [_message_to_dict(message) for message in history.messages]
-            return
+            return []
         
         system_prompt = Path("workspace/AGENT.md").read_text(encoding="utf-8")
         ctx.messages.append({"role": "system", "content": system_prompt})
@@ -64,6 +74,8 @@ class ContextInitialize(Step):
             )
         )
 
+        return []
+
 
 class ToolsSnapshotAvailableTools(Step):
     """Snapshot available tools from ToolRegistry into ctx.available_tools."""
@@ -72,11 +84,13 @@ class ToolsSnapshotAvailableTools(Step):
         super().__init__("tools.snapshot_available_tools", HookPhase.before_agent)
         self._registry = registry
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         if self._registry is None:
             ctx.available_tools = []
         else:
             ctx.available_tools = self._registry.list_schemas()
+
+        return []
 
 
 class BudgetInitialize(Step):
@@ -91,11 +105,13 @@ class BudgetInitialize(Step):
         self._max_iterations = max_iterations
         self._max_tokens = max_tokens
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         ctx.budget = BudgetState(
             max_iterations=self._max_iterations,
             max_tokens=self._max_tokens,
         )
+
+        return []
 
 
 class MessageCommitUser(Step):
@@ -104,11 +120,11 @@ class MessageCommitUser(Step):
     def __init__(self) -> None:
         super().__init__("message.commit_user", HookPhase.before_agent)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         ctx.messages.append({"role": "user", "content": ctx.input})
         store = ctx.timeline_store
         if store is None:
-            return
+            return []
         seq = store.get_latest_sequence(ctx.branch_id) + 1
         msg = Message(
             message_id=str(uuid.uuid4()),
@@ -121,6 +137,8 @@ class MessageCommitUser(Step):
         )
         store.append_message(msg)
 
+        return []
+
 
 class CheckpointCreateUserSnapshot(Step):
     """Create user_snapshot checkpoint after committing user message."""
@@ -128,10 +146,10 @@ class CheckpointCreateUserSnapshot(Step):
     def __init__(self) -> None:
         super().__init__("checkpoint.create_user_snapshot", HookPhase.before_agent)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         store = ctx.timeline_store
         if store is None:
-            return
+            return []
         cursor = store.get_latest_sequence(ctx.branch_id)
         cp = Checkpoint(
             checkpoint_id=str(uuid.uuid4()),
@@ -142,3 +160,5 @@ class CheckpointCreateUserSnapshot(Step):
             message_cursor=cursor,
         )
         store.create_checkpoint(cp)
+
+        return []

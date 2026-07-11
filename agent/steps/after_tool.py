@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 import uuid
 
 from agent.core.context import RunContext
@@ -15,8 +16,8 @@ class ToolResultsCapture(Step):
     def __init__(self) -> None:
         super().__init__("tool_results.capture", HookPhase.after_tool)
 
-    def run(self, ctx: RunContext) -> None:
-        pass
+    def run(self, ctx: RunContext) -> list[Any]:
+        return []
 
 
 class MessageCommitToolResults(Step):
@@ -25,10 +26,10 @@ class MessageCommitToolResults(Step):
     def __init__(self) -> None:
         super().__init__("message.commit_tool_results", HookPhase.after_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         results = ctx.current_tool_results
         if not results or not isinstance(results, list):
-            return
+            return []
 
         for result in results:
             if not isinstance(result, ToolResult):
@@ -62,6 +63,8 @@ class MessageCommitToolResults(Step):
             )
             store.append_message(msg)
 
+        return []
+
 
 class CheckpointRecordToolResultsCommitted(Step):
     """Create runtime checkpoint after tool results are committed."""
@@ -69,10 +72,10 @@ class CheckpointRecordToolResultsCommitted(Step):
     def __init__(self) -> None:
         super().__init__("checkpoint.record_tool_results_committed", HookPhase.after_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         store = ctx.timeline_store
         if store is None:
-            return
+            return []
         cursor = store.get_latest_sequence(ctx.branch_id)
         cp = Checkpoint(
             checkpoint_id=str(uuid.uuid4()),
@@ -83,3 +86,5 @@ class CheckpointRecordToolResultsCommitted(Step):
             message_cursor=cursor,
         )
         store.create_checkpoint(cp)
+
+        return []

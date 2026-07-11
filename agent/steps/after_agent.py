@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import uuid
 
 from agent.core.context import RunContext
@@ -14,13 +16,14 @@ class RunMarkTerminalState(Step):
     def __init__(self) -> None:
         super().__init__("run.mark_terminal_state", HookPhase.after_agent)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         store = ctx.timeline_store
         if store is None:
-            return
+            return []
         status_map = {"completed": RunStatus.completed, "failed": RunStatus.failed, "interrupted": RunStatus.interrupted}
         status = status_map.get(ctx.status, RunStatus.failed)
         store.update_run_status(ctx.run_id, status)
+        return []
 
 
 class CheckpointRecordRunTerminalState(Step):
@@ -29,10 +32,10 @@ class CheckpointRecordRunTerminalState(Step):
     def __init__(self) -> None:
         super().__init__("checkpoint.record_run_terminal_state", HookPhase.after_agent)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         store = ctx.timeline_store
         if store is None:
-            return
+            return []
         cursor = store.get_latest_sequence(ctx.branch_id)
         cp = Checkpoint(
             checkpoint_id=str(uuid.uuid4()),
@@ -43,6 +46,7 @@ class CheckpointRecordRunTerminalState(Step):
             message_cursor=cursor,
         )
         store.create_checkpoint(cp)
+        return []
 
 
 class BranchUpdateResumeHead(Step):
@@ -51,12 +55,12 @@ class BranchUpdateResumeHead(Step):
     def __init__(self) -> None:
         super().__init__("branch.update_resume_head", HookPhase.after_agent)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         store = ctx.timeline_store
         if store is None:
-            return
+            return []
         if ctx.status != "completed":
-            return
+            return []
         checkpoints = store.get_checkpoints_by_branch(ctx.branch_id)
         run_completed_cp = None
         for cp in reversed(checkpoints):
@@ -64,9 +68,10 @@ class BranchUpdateResumeHead(Step):
                 run_completed_cp = cp
                 break
         if run_completed_cp is None:
-            return
+            return []
         branch = store.get_branch(ctx.branch_id)
         if branch is None:
-            return
+            return []
         branch.resume_head = run_completed_cp.checkpoint_id
         store.update_branch(branch)
+        return []

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 import uuid
 
 from agent.core.context import RunContext
@@ -15,10 +16,10 @@ class MessageCommitAssistant(Step):
     def __init__(self) -> None:
         super().__init__("message.commit_assistant", HookPhase.after_model)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
-            return
+            return []
 
         tool_calls_data: list[dict] = []
         if resp.tool_calls:
@@ -32,7 +33,7 @@ class MessageCommitAssistant(Step):
 
         store = ctx.timeline_store
         if store is None:
-            return
+            return []
         seq = store.get_latest_sequence(ctx.branch_id) + 1
         msg = Message(
             message_id=str(uuid.uuid4()),
@@ -45,6 +46,7 @@ class MessageCommitAssistant(Step):
             tool_calls=tool_calls_data,
         )
         store.append_message(msg)
+        return []
 
 
 class UsageUpdate(Step):
@@ -53,12 +55,13 @@ class UsageUpdate(Step):
     def __init__(self) -> None:
         super().__init__("usage.update", HookPhase.after_model)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
-            return
+            return []
         ctx.budget.consumed_input_tokens += resp.usage.input_tokens
         ctx.budget.consumed_output_tokens += resp.usage.output_tokens
+        return []
 
 
 class ResultDetectRouting(Step):
@@ -67,13 +70,14 @@ class ResultDetectRouting(Step):
     def __init__(self) -> None:
         super().__init__("result.detect_routing", HookPhase.after_model)
 
-    def run(self, ctx: RunContext) -> None:
+    def run(self, ctx: RunContext) -> list[Any]:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
-            return
+            return []
 
         if resp.tool_calls:
             ctx.has_tool_calls = True
         else:
             ctx.has_tool_calls = False
             ctx.final_result = resp.content
+        return []
