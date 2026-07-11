@@ -45,7 +45,6 @@ from agent.tools.dispatcher import ToolDispatcher
 def build_runner(
     client: OpenAICompatibleClient,
     dispatcher: ToolDispatcher,
-    tool_schemas: list[dict],
 ) -> AgentRunner:
     reg = StepRegistry()
     # ---- before_agent ----
@@ -93,5 +92,4 @@ def build_runner(
         model_call=make_llm_call_action(client),
         tool_call=make_tool_call_action(dispatcher),
         model_stream=make_llm_stream_action(client),
-        tool_schemas=tool_schemas,
     )

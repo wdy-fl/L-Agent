@@ -39,14 +39,12 @@ class AgentRunner:
         model_call: Callable[[RunContext], Any] | Callable[[RunContext], Awaitable[Any]] | None = None,
         tool_call: Callable[[RunContext], Any] | Callable[[RunContext], Awaitable[Any]] | None = None,
         model_stream: Callable[[RunContext], AsyncGenerator[str | ModelResponse, None]] | None = None,
-        tool_schemas: list[dict[str, Any]] | None = None,
     ) -> None:
         self._registry = registry
         self._chain = middleware_chain
         self._model_call = model_call or self._noop_model_call
         self._tool_call = tool_call or self._noop_tool_call
         self._model_stream = model_stream
-        self.tool_schemas: list[dict[str, Any]] = tool_schemas or []
 
     async def run(self, ctx: RunContext) -> AsyncGenerator[AgentEvent, None]:
         try:

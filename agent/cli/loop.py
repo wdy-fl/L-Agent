@@ -138,9 +138,7 @@ class CLILoop:
 
         self._ctx.available_tools = tool_registry.list_schemas()
         
-        self._runner = build_runner(
-            client, dispatcher, tool_registry.list_schemas()
-        )
+        self._runner = build_runner(client, dispatcher)
 
         self._console.print()
         self._console.print("[bold cyan]  L-Agent[/bold cyan] [dim]v0.1.0[/dim]")
