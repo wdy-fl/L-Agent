@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 import uuid
 from pathlib import Path
@@ -22,7 +23,7 @@ def _message_to_dict(message: Message) -> dict[str, Any]:
     return data
 
 
-class RunCreate(Step):
+class RunStart(Step):
     """Write AgentRun record to TimelineStore (status=running), log run.start, emit RunStart event."""
 
     def __init__(self) -> None:
@@ -32,6 +33,7 @@ class RunCreate(Step):
         store = ctx.timeline_store
         if store is None:
             return []
+        ctx.started_at = time.time()
         ctx.run_id = str(uuid.uuid4())
         run = AgentRun(run_id=ctx.run_id, session_id=ctx.session_id, branch_id=ctx.branch_id, status=RunStatus.running)
         store.create_run(run)

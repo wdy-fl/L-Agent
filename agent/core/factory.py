@@ -23,7 +23,7 @@ from agent.steps.after_model import (
 )
 from agent.steps.after_tool import ToolResultsCapture, MessageCommitToolResults
 from agent.steps.before_agent import (
-    RunCreate,
+    RunStart,
     ContextInitialize,
     MessageCommitUser,
     CheckpointCreateUserSnapshot,
@@ -72,7 +72,7 @@ def build_runner(settings: Settings) -> AgentRunner:
 
     reg = StepRegistry()
     # ---- before_agent ----
-    reg.register(RunCreate())
+    reg.register(RunStart())
     reg.register(ContextInitialize())
     reg.register(ToolsSnapshotAvailableTools(registry=tool_registry))
     reg.register(BudgetInitialize(

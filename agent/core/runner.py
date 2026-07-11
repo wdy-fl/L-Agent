@@ -47,7 +47,6 @@ class AgentRunner:
         self._model_stream = model_stream
 
     async def run(self, ctx: RunContext) -> AsyncGenerator[AgentEvent, None]:
-        ctx.started_at = time.time()
         try:
             for event in self._run_phase(HookPhase.before_agent, ctx):
                 yield event
