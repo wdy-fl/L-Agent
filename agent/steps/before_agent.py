@@ -4,7 +4,7 @@ import time
 from typing import Any
 import uuid
 
-from agent.core.context import BudgetState, RunContext
+from agent.core.context import RunContext
 from agent.core.events import RunStart
 from agent.core.lifecycle import HookPhase
 from agent.llm.client import ModelConfig
@@ -37,26 +37,6 @@ class RunStart(Step):
             )
         return [RunStart()]
 
-
-class BudgetInitialize(Step):
-    """Initialize budget state (max iterations, token limits)."""
-
-    def __init__(
-        self,
-        max_iterations: int = 25,
-        max_tokens: int = 200_000,
-    ) -> None:
-        super().__init__("budget.initialize", HookPhase.before_agent)
-        self._max_iterations = max_iterations
-        self._max_tokens = max_tokens
-
-    def run(self, ctx: RunContext) -> list[Any]:
-        ctx.budget = BudgetState(
-            max_iterations=self._max_iterations,
-            max_tokens=self._max_tokens,
-        )
-
-        return []
 
 
 class MessageCommitUser(Step):

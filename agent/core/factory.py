@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from agent.actions.model_call import make_llm_call_action, make_llm_stream_action
 from agent.actions.tool_call import make_tool_call_action
-from agent.config.settings import Settings
 from agent.core.runner import AgentRunner
 from agent.llm.client import OpenAICompatibleClient
 from agent.middleware.chain import MiddlewareChain
@@ -26,7 +25,6 @@ from agent.steps.before_agent import (
     RunStart,
     MessageCommitUser,
     CheckpointCreateUserSnapshot,
-    BudgetInitialize,
 )
 from agent.steps.before_model import (
     IterationCreate,
@@ -45,7 +43,6 @@ from agent.tools.dispatcher import ToolDispatcher
 
 
 def build_runner(
-    settings: Settings,
     client: OpenAICompatibleClient,
     dispatcher: ToolDispatcher,
     tool_schemas: list[dict],
@@ -53,10 +50,6 @@ def build_runner(
     reg = StepRegistry()
     # ---- before_agent ----
     reg.register(RunStart())
-    reg.register(BudgetInitialize(
-        max_iterations=settings.budget.max_iterations,
-        max_tokens=settings.budget.max_tokens,
-    ))
     reg.register(MessageCommitUser())
     reg.register(CheckpointCreateUserSnapshot())
 

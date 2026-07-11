@@ -15,7 +15,7 @@ from agent.cli.approval import ApprovalHandler
 from agent.cli.commands import CommandDispatcher
 from agent.cli.render import Renderer
 from agent.config.settings import Settings
-from agent.core.context import RunContext
+from agent.core.context import BudgetState, RunContext
 from agent.core.factory import build_runner
 from agent.llm.client import ModelConfig, OpenAICompatibleClient
 from agent.logging.logger import AgentLogger
@@ -91,9 +91,6 @@ class CLILoop:
             )
         dispatcher = ToolDispatcher(tool_registry)
 
-        self._runner = build_runner(
-            self._settings, client, dispatcher, tool_registry.list_schemas()
-        )
 
         session = create_session_with_default_branch(self._store)
         self._session_id = session.session_id
@@ -115,6 +112,10 @@ class CLILoop:
             always_confirm_tools=self._always_confirm,
             logger=self._logger,
         )
+        self._ctx.budget = BudgetState(
+            max_iterations=self._settings.budget.max_iterations,
+            max_tokens=self._settings.budget.max_tokens,
+        )
 
         history = resume(self._store, self._session_id)
         if history.messages:
@@ -135,7 +136,11 @@ class CLILoop:
                 )
             )
 
-        self._ctx.available_tools = self._runner.tool_schemas
+        self._ctx.available_tools = tool_registry.list_schemas()
+        
+        self._runner = build_runner(
+            client, dispatcher, tool_registry.list_schemas()
+        )
 
         self._console.print()
         self._console.print("[bold cyan]  L-Agent[/bold cyan] [dim]v0.1.0[/dim]")
