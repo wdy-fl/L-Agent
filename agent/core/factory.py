@@ -9,7 +9,7 @@ from agent.core.runner import AgentRunner
 from agent.middleware.chain import MiddlewareChain
 from agent.middleware.model import BudgetGuard, TraceRecord
 from agent.middleware.tool import ApprovalGuard, AuditRecord, ResultLimitGuard
-from agent.steps.after_agent import (
+from agent.steps.after_run import (
     RunFinish,
     RunMarkTerminalState,
     CheckpointRecordRunTerminalState,
@@ -21,7 +21,7 @@ from agent.steps.after_model import (
     ResultDetectRouting,
 )
 from agent.steps.after_tool import ToolResultsCapture, MessageCommitToolResults
-from agent.steps.before_agent import (
+from agent.steps.before_run import (
     RunStart,
     MessageCommitUser,
     CheckpointCreateUserSnapshot,
