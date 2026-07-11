@@ -32,7 +32,7 @@ from agent.storage.sqlite import SQLiteTimelineStore
 from agent.timeline.session_factory import create_session_with_default_branch
 from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS
 
-class CLISession:
+class CLILoop:
     """Manages one interactive CLI session."""
 
     def __init__(

@@ -8,7 +8,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from agent.cli.session import CLISession, console
+from agent.cli.loop import CLILoop
 from agent.config.settings import load_settings
 
 app = typer.Typer(add_completion=False)
@@ -22,13 +22,14 @@ def main() -> None:
     try:
         settings = load_settings(CONFIG_PATH)
     except FileNotFoundError:
+        console = Console()
         console.print(
             f"[red]错误:缺少配置文件 {CONFIG_PATH},请参照 config.yaml.example 创建。[/red]"
         )
         raise typer.Exit(1)
 
-    cli_session = CLISession(settings)
-    asyncio.run(cli_session.start())
+    cli_loop = CLILoop(settings)
+    asyncio.run(cli_loop.start())
 
 
 if __name__ == "__main__":
