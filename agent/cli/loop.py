@@ -34,7 +34,6 @@ from agent.steps.registry import StepRegistry  # noqa: F401
 from agent.storage.sqlite import SQLiteTimelineStore
 from agent.timeline.models import Message
 from agent.timeline.resume import resume
-from agent.timeline.session_factory import create_session_with_default_branch
 from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS, create_builtin_registry, make_web_search_tool
 from agent.tools.dispatcher import ToolDispatcher
 
@@ -67,11 +66,11 @@ class CLILoop:
         always_confirm = set(settings.approval.always_confirm) | ALWAYS_CONFIRM_TOOLS
         self._approval = ApprovalHandler(self._console, auto_approve=auto_approve)
         self._always_confirm = always_confirm
-        self._commands = CommandDispatcher(self._store, self._console)
+        self._command_dispatcher = CommandDispatcher(self._store, self._console)
 
         self._interrupted = False
 
-    def _init_agent(self) -> None:
+    async def _init_agent(self) -> None:
         """Initialize agent components: client, tools, session, context, and runner."""
         model_config = ModelConfig(
             model=self._settings.llm.model,
@@ -87,14 +86,11 @@ class CLILoop:
             tool_registry.register(
                 make_web_search_tool(self._settings.llm.api_base, self._settings.llm.api_key)
             )
-        dispatcher = ToolDispatcher(tool_registry)
+        tool_dispatcher = ToolDispatcher(tool_registry)
 
-        session = create_session_with_default_branch(self._store)
-        session_id = session.session_id
-        branch_id = session.active_branch_id
-
-        self._commands.session_id = session_id
-        self._commands.branch_id = branch_id
+        await self._command_dispatcher._cmd_new("")
+        session_id = self._command_dispatcher.session_id
+        branch_id = self._command_dispatcher.branch_id
 
         self._logger = AgentLogger(
             logs_dir=Path("workspace/logs"),
@@ -136,12 +132,12 @@ class CLILoop:
         self._ctx.available_tools = tool_registry.list_schemas()
 
         self._ctx.client = client
-        self._ctx.dispatcher = dispatcher
+        self._ctx.dispatcher = tool_dispatcher
         self._runner = build_runner(self._ctx)
 
     async def start(self) -> None:
         """Start the CLI session."""
-        self._init_agent()
+        await self._init_agent()
 
         self._console.print()
         self._console.print("[bold cyan]  L-Agent[/bold cyan] [dim]v0.1.0[/dim]")
@@ -169,7 +165,7 @@ class CLILoop:
                 continue
 
             if user_input.strip().startswith("/"):
-                await self._commands.dispatch(user_input.strip())
+                await self._command_dispatcher.dispatch(user_input.strip())
                 continue
 
             await self._handle_run(user_input.strip())
