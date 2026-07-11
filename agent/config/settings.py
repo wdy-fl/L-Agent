@@ -46,8 +46,6 @@ class Settings:
     budget: BudgetSettings = field(default_factory=BudgetSettings)
     storage: StorageSettings = field(default_factory=StorageSettings)
     approval: ApprovalSettings = field(default_factory=ApprovalSettings)
-    config_dir: Path = field(default_factory=lambda: Path("."))
-
 
 def load_settings(config_path: Path) -> Settings:
     """加载配置文件，config_path 必须显式指定；文件不存在时抛出 FileNotFoundError。"""
@@ -58,7 +56,6 @@ def load_settings(config_path: Path) -> Settings:
         data = yaml.safe_load(f) or {}
 
     settings = _parse(data)
-    settings.config_dir = config_path.parent
     return settings
 
 
