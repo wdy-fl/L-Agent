@@ -17,6 +17,7 @@ from agent.cli.render import Renderer
 from agent.config.settings import Settings
 from agent.core.context import RunContext
 from agent.core.factory import build_runner
+from agent.llm.client import ModelConfig, OpenAICompatibleClient
 from agent.logging.logger import AgentLogger
 from agent.core.events import (
     ApprovalRequest,
@@ -34,7 +35,8 @@ from agent.storage.sqlite import SQLiteTimelineStore
 from agent.timeline.models import Message
 from agent.timeline.resume import resume
 from agent.timeline.session_factory import create_session_with_default_branch
-from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS
+from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS, create_builtin_registry, make_web_search_tool
+from agent.tools.dispatcher import ToolDispatcher
 
 
 def _message_to_dict(message: Message) -> dict[str, Any]:
@@ -52,7 +54,7 @@ class CLILoop:
         self,
         settings: Settings,
     ) -> None:
-        self._runner = build_runner(settings)
+        self._settings = settings
 
         db_path = Path(settings.storage.db_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -73,6 +75,26 @@ class CLILoop:
 
     async def start(self) -> None:
         """Start the CLI session."""
+        model_config = ModelConfig(
+            model=self._settings.llm.model,
+            api_base=self._settings.llm.api_base,
+            api_key=self._settings.llm.api_key,
+            temperature=self._settings.llm.temperature,
+            max_tokens=self._settings.llm.max_tokens,
+        )
+        client = OpenAICompatibleClient(model_config)
+
+        tool_registry = create_builtin_registry()
+        if self._settings.llm.web_search:
+            tool_registry.register(
+                make_web_search_tool(self._settings.llm.api_base, self._settings.llm.api_key)
+            )
+        dispatcher = ToolDispatcher(tool_registry)
+
+        self._runner = build_runner(
+            self._settings, client, dispatcher, tool_registry.list_schemas()
+        )
+
         session = create_session_with_default_branch(self._store)
         self._session_id = session.session_id
         self._branch_id = session.active_branch_id

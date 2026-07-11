@@ -6,7 +6,7 @@ from agent.actions.model_call import make_llm_call_action, make_llm_stream_actio
 from agent.actions.tool_call import make_tool_call_action
 from agent.config.settings import Settings
 from agent.core.runner import AgentRunner
-from agent.llm.client import ModelConfig, OpenAICompatibleClient
+from agent.llm.client import OpenAICompatibleClient
 from agent.middleware.chain import MiddlewareChain
 from agent.middleware.model import BudgetGuard, TraceRecord
 from agent.middleware.tool import ApprovalGuard, AuditRecord, ResultLimitGuard
@@ -41,28 +41,15 @@ from agent.steps.before_tool import (
     ApprovalPrepareRequests,
 )
 from agent.steps.registry import StepRegistry
-from agent.tools.builtin import create_builtin_registry, make_web_search_tool
 from agent.tools.dispatcher import ToolDispatcher
 
 
-def build_runner(settings: Settings) -> AgentRunner:
-    model_config = ModelConfig(
-        model=settings.llm.model,
-        api_base=settings.llm.api_base,
-        api_key=settings.llm.api_key,
-        temperature=settings.llm.temperature,
-        max_tokens=settings.llm.max_tokens,
-    )
-    client = OpenAICompatibleClient(model_config)
-
-    tool_registry = create_builtin_registry()
-    # web_search 为客户端函数工具，需凭据；仅在 llm.web_search 开启时注册。
-    if settings.llm.web_search:
-        tool_registry.register(
-            make_web_search_tool(settings.llm.api_base, settings.llm.api_key)
-        )
-    dispatcher = ToolDispatcher(tool_registry)
-
+def build_runner(
+    settings: Settings,
+    client: OpenAICompatibleClient,
+    dispatcher: ToolDispatcher,
+    tool_schemas: list[dict],
+) -> AgentRunner:
     reg = StepRegistry()
     # ---- before_agent ----
     reg.register(RunStart())
@@ -113,5 +100,5 @@ def build_runner(settings: Settings) -> AgentRunner:
         model_call=make_llm_call_action(client),
         tool_call=make_tool_call_action(dispatcher),
         model_stream=make_llm_stream_action(client),
-        tool_schemas=tool_registry.list_schemas(),
+        tool_schemas=tool_schemas,
     )
