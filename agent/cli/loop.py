@@ -113,6 +113,8 @@ class CLILoop:
                 )
             )
 
+        self._ctx.available_tools = self._runner.tool_schemas
+
         self._console.print()
         self._console.print("[bold cyan]  L-Agent[/bold cyan] [dim]v0.1.0[/dim]")
         self._console.print("[dim]  Type your message to chat, /help for commands, Ctrl+C to exit.[/dim]")

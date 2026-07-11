@@ -10,7 +10,6 @@ from agent.core.lifecycle import HookPhase
 from agent.llm.client import ModelConfig
 from agent.steps.base import Step
 from agent.timeline.models import AgentRun, Checkpoint, CheckpointType, Message, RunStatus
-from agent.tools.registry import ToolRegistry
 
 
 class RunStart(Step):
@@ -37,22 +36,6 @@ class RunStart(Step):
                 input=ctx.input,
             )
         return [RunStart()]
-
-
-class ToolsSnapshotAvailableTools(Step):
-    """Snapshot available tools from ToolRegistry into ctx.available_tools."""
-
-    def __init__(self, registry: ToolRegistry | None = None) -> None:
-        super().__init__("tools.snapshot_available_tools", HookPhase.before_agent)
-        self._registry = registry
-
-    def run(self, ctx: RunContext) -> list[Any]:
-        if self._registry is None:
-            ctx.available_tools = []
-        else:
-            ctx.available_tools = self._registry.list_schemas()
-
-        return []
 
 
 class BudgetInitialize(Step):

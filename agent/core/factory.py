@@ -26,7 +26,6 @@ from agent.steps.before_agent import (
     RunStart,
     MessageCommitUser,
     CheckpointCreateUserSnapshot,
-    ToolsSnapshotAvailableTools,
     BudgetInitialize,
 )
 from agent.steps.before_model import (
@@ -72,7 +71,6 @@ def build_runner(settings: Settings) -> AgentRunner:
     reg = StepRegistry()
     # ---- before_agent ----
     reg.register(RunStart())
-    reg.register(ToolsSnapshotAvailableTools(registry=tool_registry))
     reg.register(BudgetInitialize(
         max_iterations=settings.budget.max_iterations,
         max_tokens=settings.budget.max_tokens,
@@ -120,4 +118,5 @@ def build_runner(settings: Settings) -> AgentRunner:
         model_call=make_llm_call_action(client),
         tool_call=make_tool_call_action(dispatcher),
         model_stream=make_llm_stream_action(client),
+        tool_schemas=tool_registry.list_schemas(),
     )
