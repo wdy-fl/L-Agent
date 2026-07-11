@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
 from prompt_toolkit import PromptSession
@@ -125,8 +124,6 @@ class CLILoop:
 
         self._ctx.input = user_input
 
-        start_time = time.time()
-
         async for event in self._runner.run(self._ctx):
             if self._interrupted:
                 self._ctx.interrupted = True
@@ -151,10 +148,9 @@ class CLILoop:
                 case RunDone():
                     pass
 
-        elapsed_ms = (time.time() - start_time) * 1000
         total_tokens = self._ctx.budget.consumed_total_tokens
 
         if self._ctx.interrupted:
             self._render.show_interrupted()
         elif self._ctx.status == "completed":
-            self._render.show_status(self._ctx.budget.consumed_iterations, total_tokens, elapsed_ms)
+            self._render.show_status(self._ctx.budget.consumed_iterations, total_tokens, self._ctx.elapsed_ms)

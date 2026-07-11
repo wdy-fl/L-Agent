@@ -14,7 +14,6 @@ from agent.core.events import (
     ApprovalRequest,
     ModelStart,
     ModelDone,
-    RunDone,
     RunError,
     Token,
     ToolDone,
@@ -48,7 +47,7 @@ class AgentRunner:
         self._model_stream = model_stream
 
     async def run(self, ctx: RunContext) -> AsyncGenerator[AgentEvent, None]:
-        t0 = time.time()
+        ctx.started_at = time.time()
         try:
             for event in self._run_phase(HookPhase.before_agent, ctx):
                 yield event
@@ -72,17 +71,6 @@ class AgentRunner:
         finally:
             for event in self._run_phase(HookPhase.after_agent, ctx):
                 yield event
-        elapsed_ms = (time.time() - t0) * 1000
-        if ctx.logger:
-            ctx.logger.log(
-                event="run.done",
-                run_id=ctx.run_id,
-                status=ctx.status,
-                elapsed_ms=round(elapsed_ms, 1),
-                total_iterations=ctx.budget.consumed_iterations,
-                total_tokens=ctx.budget.consumed_total_tokens,
-            )
-        yield RunDone(status=ctx.status, result=ctx.final_result)
 
     async def _react_loop(self, ctx: RunContext) -> AsyncGenerator[AgentEvent, None]:
         while True:

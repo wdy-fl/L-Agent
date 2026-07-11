@@ -35,6 +35,8 @@ class RunContext:
     branch_id: str = ""
     run_id: str = ""
 
+    started_at: float = 0.0
+    elapsed_ms: float = 0.0
     interrupted: bool = False
 
     # --- messages ---

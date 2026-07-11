@@ -11,6 +11,7 @@ from agent.middleware.chain import MiddlewareChain
 from agent.middleware.model import BudgetGuard, TraceRecord
 from agent.middleware.tool import ApprovalGuard, AuditRecord, ResultLimitGuard
 from agent.steps.after_agent import (
+    RunFinish,
     RunMarkTerminalState,
     CheckpointRecordRunTerminalState,
     BranchUpdateResumeHead,
@@ -106,6 +107,7 @@ def build_runner(settings: Settings) -> AgentRunner:
     reg.register(RunMarkTerminalState())
     reg.register(CheckpointRecordRunTerminalState())
     reg.register(BranchUpdateResumeHead())
+    reg.register(RunFinish())
 
     chain = MiddlewareChain()
     chain.add(BudgetGuard())
