@@ -150,10 +150,6 @@ class CLILoop:
         self._console.print("[dim]  Type your message to chat, /help for commands, Ctrl+C to exit.[/dim]")
         self._console.print()
 
-        await self._main_loop()
-
-    async def _main_loop(self) -> None:
-        """Main input loop."""
         kb = KeyBindings()
 
         @kb.add(Keys.Escape)
