@@ -87,11 +87,10 @@ class CLILoop:
         )
         await self._command_dispatcher.dispatch("/new", self._ctx)
 
-        self._logger = AgentLogger(
+        self._ctx.logger = AgentLogger(
             logs_dir=Path("workspace/logs"),
             session_id=self._ctx.session_id,
         )
-        self._ctx.logger = self._logger
 
         self._ctx.available_tools = tool_registry.list_schemas()
         self._ctx.client = client

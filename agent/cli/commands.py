@@ -33,11 +33,9 @@ class CommandDispatcher:
         self,
         store: SQLiteTimelineStore,
         console: Console,
-        system_prompt_path: str = "workspace/AGENT.md",
     ) -> None:
         self._store = store
         self._console = console
-        self._system_prompt_path = system_prompt_path
         self._session_id: str = ""
         self._branch_id: str = ""
 
@@ -87,7 +85,7 @@ class CommandDispatcher:
         ctx.session_id = session.session_id
         ctx.branch_id = session.active_branch_id
 
-        system_prompt = Path(self._system_prompt_path).read_text(encoding="utf-8")
+        system_prompt = Path("workspace/AGENT.md").read_text(encoding="utf-8")
         ctx.messages = [{"role": "system", "content": system_prompt}]
 
         seq = self._store.get_latest_sequence(ctx.branch_id) + 1
