@@ -66,15 +66,11 @@ class CLILoop:
             temperature=self._settings.llm.temperature,
             max_tokens=self._settings.llm.max_tokens,
         )
-        client = OpenAICompatibleClient(model_config)
-
         tool_registry = create_builtin_registry()
         if self._settings.llm.web_search:
             tool_registry.register(
                 make_web_search_tool(self._settings.llm.base_url, self._settings.llm.api_key)
             )
-        tool_dispatcher = ToolDispatcher(tool_registry)
-
         # Create a bare ctx shell, then let /new populate session_id, branch_id, messages.
         self._ctx = RunContext(
             timeline_store=self._store,
@@ -93,8 +89,8 @@ class CLILoop:
         )
 
         self._ctx.available_tools = tool_registry.list_schemas()
-        self._ctx.client = client
-        self._ctx.dispatcher = tool_dispatcher
+        self._ctx.client = OpenAICompatibleClient(model_config)
+        self._ctx.dispatcher = ToolDispatcher(tool_registry)
         self._runner = build_runner(self._ctx)
 
     async def start(self) -> None:

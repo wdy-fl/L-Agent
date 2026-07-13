@@ -36,13 +36,11 @@ class AgentRunner:
         self,
         registry: StepRegistry,
         middleware_chain: MiddlewareChain,
-        model_call: Callable[[RunContext], Any] | Callable[[RunContext], Awaitable[Any]] | None = None,
         tool_call: Callable[[RunContext], Any] | Callable[[RunContext], Awaitable[Any]] | None = None,
         model_stream: Callable[[RunContext], AsyncGenerator[str | ModelResponse, None]] | None = None,
     ) -> None:
         self._registry = registry
         self._chain = middleware_chain
-        self._model_call = model_call or self._noop_model_call
         self._tool_call = tool_call or self._noop_tool_call
         self._model_stream = model_stream
 
@@ -121,9 +119,6 @@ class AgentRunner:
                             for tc in response.tool_calls
                         ],
                     )
-            else:
-                await self._execute_action(ActionName.model_call, ctx, self._model_call)
-
             yield ModelDone(response=ctx.current_model_response or ModelResponse())
 
             for event in self._run_phase(HookPhase.after_model, ctx):
@@ -169,7 +164,17 @@ class AgentRunner:
 
                 should_execute = (plan is None) or (not hasattr(plan, "calls")) or plan.calls
                 if should_execute:
-                    await self._execute_action(ActionName.tool_call, ctx, self._tool_call)
+                    self._record_checkpoint(ActionName.tool_call, "started", ctx)
+                    try:
+                        wrapped = self._chain.execute(ActionName.tool_call, ctx, lambda: self._tool_call(ctx))
+                        if hasattr(wrapped, "__await__"):
+                            ctx.current_tool_results = await wrapped
+                        else:
+                            ctx.current_tool_results = wrapped
+                        self._record_checkpoint(ActionName.tool_call, "completed", ctx)
+                    except Exception:
+                        self._record_checkpoint(ActionName.tool_call, "failed", ctx)
+                        raise
 
                 for tool_result in self._get_tool_results(ctx):
                     yield ToolDone(tool_name=tool_result.get("name", ""), result=tool_result.get("content"))
@@ -202,25 +207,6 @@ class AgentRunner:
             events.extend(step.run(ctx))
         return events
 
-    async def _execute_action(
-        self, action_name: ActionName, ctx: RunContext, action: Callable
-    ) -> None:
-        self._record_checkpoint(action_name, "started", ctx)
-        try:
-            wrapped = self._chain.execute(action_name, ctx, lambda: action(ctx))
-            if hasattr(wrapped, "__await__"):
-                result = await wrapped
-            else:
-                result = wrapped
-            if action_name == ActionName.model_call:
-                ctx.current_model_response = result
-            elif action_name == ActionName.tool_call:
-                ctx.current_tool_results = result
-            self._record_checkpoint(action_name, "completed", ctx)
-        except Exception as exc:
-            self._record_checkpoint(action_name, "failed", ctx)
-            raise exc
-
     def _record_checkpoint(self, action: ActionName, status: str, ctx: RunContext) -> None:
         store = ctx.timeline_store
         if store is None:
@@ -236,11 +222,6 @@ class AgentRunner:
             message_cursor=cursor,
         )
         store.create_checkpoint(cp)
-
-    @staticmethod
-    async def _noop_model_call(ctx: RunContext) -> Any:
-        ctx.final_result = ""
-        return None
 
     @staticmethod
     async def _noop_tool_call(ctx: RunContext) -> Any:

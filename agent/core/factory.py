@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent.actions.model_call import make_llm_call_action, make_llm_stream_action
+from agent.actions.model_call import make_llm_stream_action
 from agent.actions.tool_call import make_tool_call_action
 from agent.core.context import RunContext
 from agent.core.runner import AgentRunner
@@ -85,7 +85,6 @@ def build_runner(ctx: RunContext) -> AgentRunner:
     return AgentRunner(
         registry=reg,
         middleware_chain=chain,
-        model_call=make_llm_call_action(ctx.client),
         tool_call=make_tool_call_action(ctx.dispatcher),
         model_stream=make_llm_stream_action(ctx.client),
     )
