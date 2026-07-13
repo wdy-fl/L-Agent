@@ -20,7 +20,7 @@ ALL_BUILTIN_TOOLS = [
     terminal_tool,
 ]
 # web_search 需要凭据，由 factory 在 llm.web_search 开启时通过
-# make_web_search_tool(api_base, api_key) 创建并注册，不放入 ALL_BUILTIN_TOOLS。
+# make_web_search_tool(base_url, api_key) 创建并注册，不放入 ALL_BUILTIN_TOOLS。
 
 AUTO_APPROVE_TOOLS = frozenset({
     "think",

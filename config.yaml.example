@@ -1,10 +1,10 @@
 # ═══════════════════════════════════════════
 # LLM 模型配置
 # ═══════════════════════════════════════════
-# api_base 需包含版本路径：智谱为 https://open.bigmodel.cn/api/paas/v4
+# base_url 需包含版本路径：智谱为 https://open.bigmodel.cn/api/paas/v4
 # （OpenAI 兼容端点，客户端只追加 /chat/completions）。
 llm:
-  api_base: "https://open.bigmodel.cn/api/paas/v4"
+  base_url: "https://open.bigmodel.cn/api/paas/v4"
   api_key: "这里换成你的智谱api_key"
   model: "glm-5.2"
   temperature: 0.7

@@ -16,7 +16,7 @@ pip install -e .
 
 ```yaml
 llm:
-  api_base: "https://api.deepseek.com"
+  base_url: "https://api.deepseek.com"
   api_key: "your-api-key"
   model: "deepseek-chat"
   temperature: 0.7

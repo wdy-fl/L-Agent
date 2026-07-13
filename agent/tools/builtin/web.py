@@ -20,13 +20,13 @@ import httpx
 from agent.tools.base import ToolSpec
 
 
-def make_web_search_tool(api_base: str, api_key: str) -> ToolSpec:
+def make_web_search_tool(base_url: str, api_key: str) -> ToolSpec:
     """Create a web_search tool backed by Zhipu web-search-pro.
 
     Credentials are captured in the handler closure; the tool itself is
     registered only when llm.web_search is enabled (see factory).
     """
-    base = api_base.rstrip("/")
+    base = base_url.rstrip("/")
 
     def _web_search_handler(query: str, limit: int = 5) -> str:
         payload = {

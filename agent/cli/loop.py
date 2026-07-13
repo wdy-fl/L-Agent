@@ -61,7 +61,7 @@ class CLILoop:
         """Initialize agent components: client, tools, session, context, and runner."""
         model_config = ModelConfig(
             model=self._settings.llm.model,
-            api_base=self._settings.llm.api_base,
+            base_url=self._settings.llm.base_url,
             api_key=self._settings.llm.api_key,
             temperature=self._settings.llm.temperature,
             max_tokens=self._settings.llm.max_tokens,
@@ -71,7 +71,7 @@ class CLILoop:
         tool_registry = create_builtin_registry()
         if self._settings.llm.web_search:
             tool_registry.register(
-                make_web_search_tool(self._settings.llm.api_base, self._settings.llm.api_key)
+                make_web_search_tool(self._settings.llm.base_url, self._settings.llm.api_key)
             )
         tool_dispatcher = ToolDispatcher(tool_registry)
 

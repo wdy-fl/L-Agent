@@ -16,7 +16,7 @@ class ModelConfig:
     model: str = "glm-5.2"
     temperature: float = 0.7
     max_tokens: int = 4096
-    api_base: str = ""
+    base_url: str = ""
     api_key: str = ""
     timeout: float = 120.0
 
@@ -77,7 +77,7 @@ class OpenAICompatibleClient(LLMClient):
     """OpenAI-compatible client (supports DeepSeek, GPT, Claude-compatible endpoints)."""
 
     def __init__(self, config: ModelConfig) -> None:
-        self._api_base = config.api_base.rstrip("/")
+        self._base_url = config.base_url.rstrip("/")
         self._api_key = config.api_key
         self._timeout = config.timeout
         self._model = config.model
@@ -90,7 +90,7 @@ class OpenAICompatibleClient(LLMClient):
 
         with httpx.Client(timeout=self._timeout) as client:
             resp = client.post(
-                f"{self._api_base}/chat/completions",
+                f"{self._base_url}/chat/completions",
                 json=payload,
                 headers=headers,
             )
@@ -111,7 +111,7 @@ class OpenAICompatibleClient(LLMClient):
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             async with client.stream(
                 "POST",
-                f"{self._api_base}/chat/completions",
+                f"{self._base_url}/chat/completions",
                 json=payload,
                 headers=self._headers(),
             ) as resp:
