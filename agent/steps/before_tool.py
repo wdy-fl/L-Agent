@@ -11,7 +11,8 @@ from agent.tools.base import ToolCall, ToolPlan
 
 
 class ToolCallsExtract(Step):
-    """Extract tool_calls list from ctx.current_model_response."""
+    """Extract tool_calls from model response, parse arguments, validate, and
+    build a serial execution plan — all in one step."""
 
     def __init__(self) -> None:
         super().__init__("tool_calls.extract", HookPhase.before_tool)
@@ -19,8 +20,9 @@ class ToolCallsExtract(Step):
     def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
-            return []
+            return
 
+        # 1. Extract tool_calls into ToolCall objects
         calls: list[ToolCall] = []
         for tc in resp.tool_calls:
             calls.append(ToolCall(
@@ -29,26 +31,9 @@ class ToolCallsExtract(Step):
                 arguments={},
             ))
 
-        ctx.current_tool_plan = ToolPlan(calls=calls)
+        plan = ToolPlan(calls=calls)
 
-        return []
-
-
-class ToolCallsParseArguments(Step):
-    """Parse JSON string arguments into dict; mark parse failures as error."""
-
-    def __init__(self) -> None:
-        super().__init__("tool_calls.parse_arguments", HookPhase.before_tool)
-
-    def run(self, ctx: RunContext) -> None:
-        resp = ctx.current_model_response
-        if resp is None or not isinstance(resp, ModelResponse):
-            return []
-
-        plan: ToolPlan | None = ctx.current_tool_plan
-        if plan is None:
-            return []
-
+        # 2. Parse JSON arguments
         for i, call in enumerate(plan.calls):
             raw_args = resp.tool_calls[i]["function"]["arguments"]
             if not raw_args or raw_args.strip() == "":
@@ -63,111 +48,43 @@ class ToolCallsParseArguments(Step):
             except json.JSONDecodeError as exc:
                 call.error = f"Failed to parse arguments: {exc}"
 
-        return []
+        # 3. Build available-tools lookup
+        available_tools: dict[str, Any] = {}
+        available_names: set[str] = set()
+        for tool_schema in ctx.available_tools:
+            func_def = tool_schema.get("function", {})
+            name = func_def.get("name", "")
+            if name:
+                available_tools[name] = func_def
+                available_names.add(name)
 
-
-class ToolCallsValidateSchema(Step):
-    """Validate parsed arguments against tool's parameters_schema."""
-
-    def __init__(self) -> None:
-        super().__init__("tool_calls.validate_schema", HookPhase.before_tool)
-
-    def run(self, ctx: RunContext) -> None:
-        plan: ToolPlan | None = ctx.current_tool_plan
-        if plan is None:
-            return []
-
-        available_tools = self._get_available_tools(ctx)
-
+        # 4. Validate schema & resolve tool existence
         for call in plan.calls:
             if call.error:
                 continue
 
             spec = available_tools.get(call.tool_name)
-            if spec is None:
-                continue
+            if spec is not None:
+                schema = spec.get("parameters", {})
+                required = schema.get("required", [])
+                properties = schema.get("properties", {})
 
-            schema = spec.get("parameters", {})
-            required = schema.get("required", [])
-            properties = schema.get("properties", {})
+                for param_name in required:
+                    if param_name not in call.arguments:
+                        call.error = f"Missing required parameter: {param_name}"
+                        break
 
-            for param_name in required:
-                if param_name not in call.arguments:
-                    call.error = f"Missing required parameter: {param_name}"
-                    break
+                if not call.error:
+                    for param_name in call.arguments:
+                        if properties and param_name not in properties:
+                            call.error = f"Unknown parameter: {param_name}"
+                            break
 
-            if call.error:
-                continue
-
-            for param_name in call.arguments:
-                if properties and param_name not in properties:
-                    call.error = f"Unknown parameter: {param_name}"
-                    break
-
-        return []
-
-    def _get_available_tools(self, ctx: RunContext) -> dict[str, Any]:
-        tools_map: dict[str, Any] = {}
-        for tool_schema in ctx.available_tools:
-            func_def = tool_schema.get("function", {})
-            name = func_def.get("name", "")
-            if name:
-                tools_map[name] = func_def
-        return tools_map
-
-
-class ToolCallsResolveTools(Step):
-    """Confirm each tool exists in the available_tools snapshot."""
-
-    def __init__(self) -> None:
-        super().__init__("tool_calls.resolve_tools", HookPhase.before_tool)
-
-    def run(self, ctx: RunContext) -> None:
-        plan: ToolPlan | None = ctx.current_tool_plan
-        if plan is None:
-            return []
-
-        available_names = self._get_available_tool_names(ctx)
-
-        for call in plan.calls:
-            if call.error:
-                continue
             if call.tool_name not in available_names:
                 call.error = f"Tool not available: {call.tool_name}"
 
-        return []
-
-    def _get_available_tool_names(self, ctx: RunContext) -> set[str]:
-        names: set[str] = set()
-        for tool_schema in ctx.available_tools:
-            func_def = tool_schema.get("function", {})
-            name = func_def.get("name", "")
-            if name:
-                names.add(name)
-        return names
-
-
-class ToolPlanBuildSerial(Step):
-    """Build serial execution plan preserving model's call order."""
-
-    def __init__(self) -> None:
-        super().__init__("tool_plan.build_serial", HookPhase.before_tool)
-
-    def run(self, ctx: RunContext) -> None:
-        plan: ToolPlan | None = ctx.current_tool_plan
-        if plan is None:
-            return []
+        # 5. Set serial execution mode
         plan.execution_mode = "serial"
 
-        return []
-
-
-class ApprovalPrepareRequests(Step):
-    """Identify which calls need approval (first version: mark only, no blocking)."""
-
-    def __init__(self) -> None:
-        super().__init__("approval.prepare_requests", HookPhase.before_tool)
-
-    def run(self, ctx: RunContext) -> None:
-        pass
-        return []
+        ctx.current_tool_plan = plan
+        return

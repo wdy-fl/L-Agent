@@ -16,7 +16,7 @@ class ToolResultsCapture(Step):
         super().__init__("tool_results.capture", HookPhase.after_tool)
 
     def run(self, ctx: RunContext) -> None:
-        return []
+        return
 
 
 class MessageCommitToolResults(Step):
@@ -28,7 +28,7 @@ class MessageCommitToolResults(Step):
     def run(self, ctx: RunContext) -> None:
         results = ctx.current_tool_results
         if not results or not isinstance(results, list):
-            return []
+            return
 
         for result in results:
             if not isinstance(result, ToolResult):
@@ -62,7 +62,7 @@ class MessageCommitToolResults(Step):
             )
             store.append_message(msg)
 
-        return []
+        return
 
 
 class CheckpointRecordToolResultsCommitted(Step):
@@ -74,7 +74,7 @@ class CheckpointRecordToolResultsCommitted(Step):
     def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
         if store is None:
-            return []
+            return
         cursor = store.get_latest_sequence(ctx.branch_id)
         cp = Checkpoint(
             checkpoint_id=str(uuid.uuid4()),
@@ -86,4 +86,4 @@ class CheckpointRecordToolResultsCommitted(Step):
         )
         store.create_checkpoint(cp)
 
-        return []
+        return

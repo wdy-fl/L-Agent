@@ -19,7 +19,7 @@ class RunStart(Step):
     def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
         if store is None:
-            return []
+            return
         ctx.started_at = time.time()
         ctx.run_id = str(uuid.uuid4())
         run = AgentRun(run_id=ctx.run_id, session_id=ctx.session_id, branch_id=ctx.branch_id, status=RunStatus.running)
@@ -33,7 +33,7 @@ class RunStart(Step):
                 run_id=ctx.run_id,
                 input=ctx.input,
             )
-        return []
+        return
 
 
 
@@ -47,7 +47,7 @@ class MessageCommitUser(Step):
         ctx.messages.append({"role": "user", "content": ctx.input})
         store = ctx.timeline_store
         if store is None:
-            return []
+            return
         seq = store.get_latest_sequence(ctx.branch_id) + 1
         msg = Message(
             message_id=str(uuid.uuid4()),
@@ -60,7 +60,7 @@ class MessageCommitUser(Step):
         )
         store.append_message(msg)
 
-        return []
+        return
 
 
 class CheckpointCreateUserSnapshot(Step):
@@ -72,7 +72,7 @@ class CheckpointCreateUserSnapshot(Step):
     def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
         if store is None:
-            return []
+            return
         cursor = store.get_latest_sequence(ctx.branch_id)
         cp = Checkpoint(
             checkpoint_id=str(uuid.uuid4()),
@@ -84,4 +84,4 @@ class CheckpointCreateUserSnapshot(Step):
         )
         store.create_checkpoint(cp)
 
-        return []
+        return

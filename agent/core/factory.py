@@ -30,14 +30,7 @@ from agent.steps.before_model import (
     IterationCreate,
     ModelRequestCompose,
 )
-from agent.steps.before_tool import (
-    ToolCallsExtract,
-    ToolCallsParseArguments,
-    ToolCallsValidateSchema,
-    ToolCallsResolveTools,
-    ToolPlanBuildSerial,
-    ApprovalPrepareRequests,
-)
+from agent.steps.before_tool import ToolCallsExtract
 from agent.steps.registry import StepRegistry
 
 
@@ -59,11 +52,6 @@ def build_runner(ctx: RunContext) -> AgentRunner:
 
     # ---- before_tool ----
     reg.register(ToolCallsExtract())
-    reg.register(ToolCallsParseArguments())
-    reg.register(ToolCallsValidateSchema())
-    reg.register(ToolCallsResolveTools())
-    reg.register(ToolPlanBuildSerial())
-    reg.register(ApprovalPrepareRequests())
 
     # ---- after_tool ----
     reg.register(ToolResultsCapture())

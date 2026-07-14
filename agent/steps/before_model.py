@@ -15,7 +15,7 @@ class IterationCreate(Step):
     def run(self, ctx: RunContext) -> None:
         ctx.budget.consumed_iterations += 1
 
-        return []
+        return
 
 
 class ModelRequestCompose(Step):
@@ -29,4 +29,4 @@ class ModelRequestCompose(Step):
             tools=ctx.available_tools,
         )
 
-        return []
+        return

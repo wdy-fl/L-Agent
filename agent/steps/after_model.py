@@ -18,7 +18,7 @@ class MessageCommitAssistant(Step):
     def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
-            return []
+            return
 
         tool_calls_data = resp.tool_calls
         if tool_calls_data:
@@ -28,7 +28,7 @@ class MessageCommitAssistant(Step):
 
         store = ctx.timeline_store
         if store is None:
-            return []
+            return
         seq = store.get_latest_sequence(ctx.branch_id) + 1
         msg = Message(
             message_id=str(uuid.uuid4()),
@@ -41,7 +41,7 @@ class MessageCommitAssistant(Step):
             tool_calls=tool_calls_data,
         )
         store.append_message(msg)
-        return []
+        return
 
 
 class UsageUpdate(Step):
@@ -53,10 +53,10 @@ class UsageUpdate(Step):
     def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
-            return []
+            return
         ctx.budget.consumed_input_tokens += resp.usage.input_tokens
         ctx.budget.consumed_output_tokens += resp.usage.output_tokens
-        return []
+        return
 
 
 class ResultDetectRouting(Step):
@@ -68,11 +68,11 @@ class ResultDetectRouting(Step):
     def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
-            return []
+            return
 
         if resp.tool_calls:
             ctx.has_tool_calls = True
         else:
             ctx.has_tool_calls = False
             ctx.final_result = resp.content
-        return []
+        return
