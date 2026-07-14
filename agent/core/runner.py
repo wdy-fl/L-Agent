@@ -41,7 +41,7 @@ class AgentRunner:
     ) -> None:
         self._registry = registry
         self._chain = middleware_chain
-        self._tool_call = tool_call or self._noop_tool_call
+        self._tool_call = tool_call or (lambda _: None)
         self._model_stream = model_stream
 
     async def run(self, ctx: RunContext) -> AsyncGenerator[AgentEvent, None]:
@@ -222,13 +222,3 @@ class AgentRunner:
             message_cursor=cursor,
         )
         store.create_checkpoint(cp)
-
-    @staticmethod
-    async def _noop_tool_call(ctx: RunContext) -> Any:
-        return None
-
-    async def run_to_completion(self, ctx: RunContext) -> RunContext:
-        """Drain the event stream and return the final context."""
-        async for _ in self.run(ctx):
-            pass
-        return ctx
