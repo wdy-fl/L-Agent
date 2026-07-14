@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
 import uuid
 
 from agent.core.context import RunContext
@@ -16,7 +15,7 @@ class ToolResultsCapture(Step):
     def __init__(self) -> None:
         super().__init__("tool_results.capture", HookPhase.after_tool)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         return []
 
 
@@ -26,7 +25,7 @@ class MessageCommitToolResults(Step):
     def __init__(self) -> None:
         super().__init__("message.commit_tool_results", HookPhase.after_tool)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         results = ctx.current_tool_results
         if not results or not isinstance(results, list):
             return []
@@ -72,7 +71,7 @@ class CheckpointRecordToolResultsCommitted(Step):
     def __init__(self) -> None:
         super().__init__("checkpoint.record_tool_results_committed", HookPhase.after_tool)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
         if store is None:
             return []

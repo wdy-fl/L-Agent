@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
 
 from agent.core.context import RunContext
 from agent.core.lifecycle import HookPhase
@@ -18,6 +17,6 @@ class Step(ABC):
         self.phase = phase
 
     @abstractmethod
-    def run(self, ctx: RunContext) -> list[Any]:
-        """Execute the step (return value is ignored by the runner)."""
+    def run(self, ctx: RunContext) -> None:
+        """Execute the step."""
         ...

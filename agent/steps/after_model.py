@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
 import uuid
 
 from agent.core.context import RunContext
@@ -16,7 +15,7 @@ class MessageCommitAssistant(Step):
     def __init__(self) -> None:
         super().__init__("message.commit_assistant", HookPhase.after_model)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
             return []
@@ -55,7 +54,7 @@ class UsageUpdate(Step):
     def __init__(self) -> None:
         super().__init__("usage.update", HookPhase.after_model)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
             return []
@@ -70,7 +69,7 @@ class ResultDetectRouting(Step):
     def __init__(self) -> None:
         super().__init__("result.detect_routing", HookPhase.after_model)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
             return []

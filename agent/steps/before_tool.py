@@ -16,7 +16,7 @@ class ToolCallsExtract(Step):
     def __init__(self) -> None:
         super().__init__("tool_calls.extract", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
             return []
@@ -40,7 +40,7 @@ class ToolCallsParseArguments(Step):
     def __init__(self) -> None:
         super().__init__("tool_calls.parse_arguments", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
             return []
@@ -72,7 +72,7 @@ class ToolCallsValidateSchema(Step):
     def __init__(self) -> None:
         super().__init__("tool_calls.validate_schema", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         plan: ToolPlan | None = ctx.current_tool_plan
         if plan is None:
             return []
@@ -122,7 +122,7 @@ class ToolCallsResolveTools(Step):
     def __init__(self) -> None:
         super().__init__("tool_calls.resolve_tools", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         plan: ToolPlan | None = ctx.current_tool_plan
         if plan is None:
             return []
@@ -153,7 +153,7 @@ class ToolPlanBuildSerial(Step):
     def __init__(self) -> None:
         super().__init__("tool_plan.build_serial", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         plan: ToolPlan | None = ctx.current_tool_plan
         if plan is None:
             return []
@@ -168,6 +168,6 @@ class ApprovalPrepareRequests(Step):
     def __init__(self) -> None:
         super().__init__("approval.prepare_requests", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> list[Any]:
+    def run(self, ctx: RunContext) -> None:
         pass
         return []
