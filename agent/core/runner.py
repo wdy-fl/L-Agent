@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 import traceback
 import uuid
 from collections.abc import AsyncGenerator
@@ -67,17 +66,6 @@ class AgentRunner:
             self._run_phase(HookPhase.before_model, ctx)
 
             if self._model_stream:
-                t_model = time.time()
-                if ctx.logger:
-                    req = ctx.current_model_request
-                    ctx.logger.log(
-                        event="model.start",
-                        run_id=ctx.run_id,
-                        iteration=ctx.budget.consumed_iterations,
-                        messages_count=len(req.messages) if req else 0,
-                        tools_count=len(req.tools) if req else 0,
-                    )
-
                 response = None
                 async for item in self._model_stream(ctx):
                     if isinstance(item, str):
@@ -93,24 +81,6 @@ class AgentRunner:
                 if render is not None:
                     render.finish_stream()
                     render.show_reasoning(getattr(response, "reasoning_content", ""))
-
-                if ctx.logger and response is not None:
-                    elapsed_ms = (time.time() - t_model) * 1000
-                    ctx.logger.log(
-                        event="model.done",
-                        run_id=ctx.run_id,
-                        iteration=ctx.budget.consumed_iterations,
-                        elapsed_ms=round(elapsed_ms, 1),
-                        tokens_in=response.usage.input_tokens,
-                        tokens_out=response.usage.output_tokens,
-                        finish_reason=response.finish_reason,
-                        content=response.content,
-                        reasoning_content=response.reasoning_content,
-                        tool_calls=[
-                            {"id": tc.id, "name": tc.name, "arguments": tc.arguments}
-                            for tc in response.tool_calls
-                        ],
-                    )
 
             self._run_phase(HookPhase.after_model, ctx)
 
