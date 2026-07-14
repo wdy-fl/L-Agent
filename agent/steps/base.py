@@ -19,5 +19,5 @@ class Step(ABC):
 
     @abstractmethod
     def run(self, ctx: RunContext) -> list[Any]:
-        """Execute the step and return a list of events to emit."""
+        """Execute the step (return value is ignored by the runner)."""
         ...

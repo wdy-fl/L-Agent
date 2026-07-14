@@ -6,14 +6,13 @@ from typing import Any
 import uuid
 
 from agent.core.context import RunContext
-from agent.core.events import RunDone
 from agent.core.lifecycle import HookPhase
 from agent.steps.base import Step
 from agent.timeline.models import Checkpoint, CheckpointType, RunStatus
 
 
 class RunFinish(Step):
-    """Log run.done and emit RunDone event."""
+    """Log run.done and record elapsed time."""
 
     def __init__(self) -> None:
         super().__init__("run.finish", HookPhase.after_agent)
@@ -29,7 +28,7 @@ class RunFinish(Step):
                 total_iterations=ctx.budget.consumed_iterations,
                 total_tokens=ctx.budget.consumed_total_tokens,
             )
-        return [RunDone(status=ctx.status, result=ctx.final_result)]
+        return []
 
 
 class RunMarkTerminalState(Step):

@@ -5,7 +5,6 @@ from typing import Any
 import uuid
 
 from agent.core.context import RunContext
-from agent.core.events import RunStart
 from agent.core.lifecycle import HookPhase
 from agent.llm.client import ModelConfig
 from agent.steps.base import Step
@@ -13,7 +12,7 @@ from agent.timeline.models import AgentRun, Checkpoint, CheckpointType, Message,
 
 
 class RunStart(Step):
-    """Write AgentRun record to TimelineStore (status=running), log run.start, emit RunStart event."""
+    """Write AgentRun record to TimelineStore (status=running), log run.start."""
 
     def __init__(self) -> None:
         super().__init__("run.create", HookPhase.before_agent)
@@ -35,7 +34,7 @@ class RunStart(Step):
                 run_id=ctx.run_id,
                 input=ctx.input,
             )
-        return [RunStart()]
+        return []
 
 
 

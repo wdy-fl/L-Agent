@@ -8,7 +8,6 @@ from typing import Any, Callable, Awaitable
 
 from agent.core.context import RunContext
 from agent.core.lifecycle import ActionName, HookPhase
-from agent.core.events import AgentEvent
 from agent.llm.client import ModelResponse
 from agent.middleware.chain import MiddlewareChain
 from agent.steps.registry import StepRegistry
@@ -193,11 +192,9 @@ class AgentRunner:
             return [{"name": getattr(r, "call_id", ""), "content": getattr(r, "content", str(r))} for r in results]
         return []
 
-    def _run_phase(self, phase: HookPhase, ctx: RunContext) -> list[AgentEvent]:
-        events: list[AgentEvent] = []
+    def _run_phase(self, phase: HookPhase, ctx: RunContext) -> None:
         for step in self._registry.get_steps(phase):
-            events.extend(step.run(ctx))
-        return events
+            step.run(ctx)
 
     def _record_checkpoint(self, action: ActionName, status: str, ctx: RunContext) -> None:
         store = ctx.timeline_store
