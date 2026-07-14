@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 import json
 from abc import ABC, abstractmethod
@@ -59,7 +60,13 @@ class LLMClient(ABC):
     @abstractmethod
     def call(self, request: ModelRequest) -> ModelResponse: ...
 
-    async def stream(self, request: ModelRequest) -> AsyncGenerator[str | ModelResponse, None]:
+    async def stream(
+        self,
+        request: ModelRequest,
+        logger: Any = None,
+        run_id: str = "",
+        iteration: int = 0,
+    ) -> AsyncGenerator[str | ModelResponse, None]:
         """Stream tokens, yielding str for deltas and ModelResponse as the final item."""
         yield self.call(request)
 
@@ -89,7 +96,23 @@ class OpenAICompatibleClient(LLMClient):
 
         return self._parse_response(resp.json())
 
-    async def stream(self, request: ModelRequest) -> AsyncGenerator[str | ModelResponse, None]:
+    async def stream(
+        self,
+        request: ModelRequest,
+        logger: Any = None,
+        run_id: str = "",
+        iteration: int = 0,
+    ) -> AsyncGenerator[str | ModelResponse, None]:
+        t0 = time.time()
+        if logger is not None:
+            logger.log(
+                event="model.start",
+                run_id=run_id,
+                iteration=iteration,
+                messages_count=len(request.messages),
+                tools_count=len(request.tools),
+            )
+
         payload = self._build_payload(request)
         payload["stream"] = True
 
@@ -120,7 +143,7 @@ class OpenAICompatibleClient(LLMClient):
                         content_parts.append(text)
                         yield text
 
-                    # 推理模型的思维链（不实时吐给前端，仅在最终响应里带回）。 
+                    # 推理模型的思维链（不实时吐给前端，仅在最终响应里带回）。
                     # TODO
                     if rc := delta.get("reasoning_content"):
                         reasoning_parts.append(rc)
@@ -150,7 +173,7 @@ class OpenAICompatibleClient(LLMClient):
         if tool_calls and finish_reason != "tool_calls":
             finish_reason = "tool_calls"
 
-        yield ModelResponse(
+        response = ModelResponse(
             content="".join(content_parts),
             reasoning_content="".join(reasoning_parts),
             tool_calls=tool_calls,
@@ -160,6 +183,26 @@ class OpenAICompatibleClient(LLMClient):
             ),
             finish_reason=finish_reason,
         )
+
+        if logger is not None:
+            elapsed_ms = (time.time() - t0) * 1000
+            logger.log(
+                event="model.done",
+                run_id=run_id,
+                iteration=iteration,
+                elapsed_ms=round(elapsed_ms, 1),
+                tokens_in=response.usage.input_tokens,
+                tokens_out=response.usage.output_tokens,
+                finish_reason=response.finish_reason,
+                content=response.content,
+                reasoning_content=response.reasoning_content,
+                tool_calls=[
+                    {"id": tc["id"], "name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}
+                    for tc in response.tool_calls
+                ],
+            )
+
+        yield response
 
     def _headers(self) -> dict[str, str]:
         return {

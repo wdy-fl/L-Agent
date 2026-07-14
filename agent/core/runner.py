@@ -57,19 +57,13 @@ class AgentRunner:
             if ctx.current_model_request is None:
                 raise RuntimeError("model_request not set before model call")
 
-            t0 = time.time()
-            if ctx.logger is not None:
-                req = ctx.current_model_request
-                ctx.logger.log(
-                    event="model.start",
-                    run_id=ctx.run_id,
-                    iteration=ctx.budget.consumed_iterations,
-                    messages_count=len(req.messages) if req else 0,
-                    tools_count=len(req.tools) if req else 0,
-                )
-
             response = None
-            async for item in ctx.client.stream(ctx.current_model_request):
+            async for item in ctx.client.stream(
+                ctx.current_model_request,
+                logger=ctx.logger,
+                run_id=ctx.run_id,
+                iteration=ctx.budget.consumed_iterations,
+            ):
                 if isinstance(item, str):
                     if render is not None:
                         render.stream_text(item)
@@ -79,24 +73,6 @@ class AgentRunner:
                 raise RuntimeError("stream ended without ModelResponse")
             ctx.current_model_response = response
             self._record_checkpoint(ActionName.model_call, "completed", ctx)
-
-            if ctx.logger is not None:
-                elapsed_ms = (time.time() - t0) * 1000
-                ctx.logger.log(
-                    event="model.done",
-                    run_id=ctx.run_id,
-                    iteration=ctx.budget.consumed_iterations,
-                    elapsed_ms=round(elapsed_ms, 1),
-                    tokens_in=response.usage.input_tokens if response else 0,
-                    tokens_out=response.usage.output_tokens if response else 0,
-                    finish_reason=response.finish_reason if response else "",
-                    content=response.content if response else "",
-                    reasoning_content=response.reasoning_content if response else "",
-                    tool_calls=[
-                        {"id": tc["id"], "name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}
-                        for tc in (response.tool_calls if response else [])
-                    ],
-                )
 
             if render is not None:
                 render.finish_stream()
