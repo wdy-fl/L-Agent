@@ -97,11 +97,11 @@ class AgentRunner:
     async def _execute_tool(self, ctx: RunContext) -> None:
         """Run the tool-call phase: approval, execution, and rendering."""
         render = ctx.render
-        plan = ctx.current_tool_plan
+        calls = ctx.current_tool_calls
 
-        if plan and hasattr(plan, "calls") and plan.calls and ctx.always_confirm_tools:
+        if calls and ctx.always_confirm_tools:
             approved_calls: list[ToolCall] = []
-            for call in plan.calls:
+            for call in calls:
                 if call.error:
                     approved_calls.append(call)
                     continue
@@ -126,13 +126,14 @@ class AgentRunner:
                     if ctx.current_tool_results is None:
                         ctx.current_tool_results = []
                     ctx.current_tool_results.append(result)
-            plan.calls = approved_calls
+            ctx.current_tool_calls = approved_calls
+            calls = approved_calls
 
         for tool_call_info in self._get_tool_calls(ctx):
             if render is not None:
                 render.show_tool_spinner(tool_call_info.get("name", ""))
 
-        should_execute = (plan is None) or (not hasattr(plan, "calls")) or plan.calls
+        should_execute = calls is None or bool(calls)
         if should_execute:
             self._record_checkpoint(ActionName.tool_call, "started", ctx)
             try:
@@ -153,12 +154,9 @@ class AgentRunner:
                 )
 
     def _get_tool_calls(self, ctx: RunContext) -> list[dict]:
-        if ctx.current_tool_plan is None:
+        if ctx.current_tool_calls is None:
             return []
-        plan = ctx.current_tool_plan
-        if hasattr(plan, "calls"):
-            return [{"name": c.tool_name, "arguments": c.arguments} for c in plan.calls]
-        return []
+        return [{"name": c.tool_name, "arguments": c.arguments} for c in ctx.current_tool_calls]
 
     def _get_tool_results(self, ctx: RunContext) -> list[dict]:
         results = ctx.current_tool_results

@@ -81,5 +81,5 @@ class ToolCallsExtract(Step):
             if call.tool_name not in available_names:
                 call.error = f"Tool not available: {call.tool_name}"
 
-        ctx.current_tool_plan = calls
+        ctx.current_tool_calls = calls
         return

@@ -54,7 +54,7 @@ class RunContext:
 
     # --- tool context---
     available_tools: list[dict[str, Any]] = field(default_factory=list)
-    current_tool_plan: Any = None
+    current_tool_calls: Any = None
     current_tool_results: Any = None
     has_tool_calls: bool = False
     auto_approve_tools: set[str] = field(default_factory=set)

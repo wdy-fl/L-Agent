@@ -33,9 +33,9 @@ class AuditRecord(Middleware):
 
         # Build a lookup: call_id -> tool_name for matching results
         call_id_to_name: dict[str, str] = {}
-        plan = ctx.current_tool_plan
-        if plan and hasattr(plan, "calls"):
-            for tc in plan.calls:
+        calls = ctx.current_tool_calls
+        if calls:
+            for tc in calls:
                 call_id_to_name[tc.call_id] = tc.tool_name
                 ctx.logger.log(
                     event="tool.start",
