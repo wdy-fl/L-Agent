@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -75,3 +76,7 @@ class RunContext:
     # --- infrastructure (set by CLILoop before build_runner) ---
     client: OpenAICompatibleClient | None = None
     dispatcher: ToolDispatcher | None = None
+
+    # --- ui callbacks (set by CLILoop so runner can drive rendering & approval directly) ---
+    render: Any = None
+    request_approval: Callable[[str, dict[str, Any], str], Awaitable[bool]] | None = None

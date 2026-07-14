@@ -17,16 +17,6 @@ from agent.core.context import BudgetState, RunContext
 from agent.core.factory import build_runner
 from agent.llm.client import ModelConfig, OpenAICompatibleClient
 from agent.logging.logger import AgentLogger
-from agent.core.events import (
-    ApprovalRequest,
-    ModelDone,
-    ModelStart,
-    RunDone,
-    RunError,
-    Token,
-    ToolDone,
-    ToolStart,
-)
 from agent.middleware.chain import MiddlewareChain  # noqa: F401
 from agent.steps.registry import StepRegistry  # noqa: F401
 from agent.storage.sqlite import SQLiteTimelineStore
@@ -54,8 +44,6 @@ class CLILoop:
         self._approval = ApprovalHandler(self._console, auto_approve=auto_approve)
         self._always_confirm = always_confirm
         self._command_dispatcher = CommandDispatcher(self._store, self._console)
-
-        self._interrupted = False
 
     async def _init_agent(self) -> None:
         """Initialize agent components: client, tools, session, context, and runner."""
@@ -91,6 +79,11 @@ class CLILoop:
         self._ctx.available_tools = tool_registry.list_schemas()
         self._ctx.client = OpenAICompatibleClient(model_config)
         self._ctx.dispatcher = ToolDispatcher(tool_registry)
+
+        # Inject UI callbacks so the runner can drive rendering & approval directly.
+        self._ctx.render = self._render
+        self._ctx.request_approval = self._approval.prompt
+
         self._runner = build_runner(self._ctx)
 
     async def start(self) -> None:
@@ -106,7 +99,7 @@ class CLILoop:
 
         @kb.add(Keys.Escape)
         def _esc(event):
-            self._interrupted = True
+            self._ctx.interrupted = True
 
         session: PromptSession = PromptSession(key_bindings=kb)
 
@@ -129,34 +122,11 @@ class CLILoop:
             await self._handle_run(user_input.strip())
 
     async def _handle_run(self, user_input: str) -> None:
-        """Execute an agent run and render events."""
-        self._interrupted = False
-
+        """Execute an agent run (rendering & approval driven through ctx callbacks)."""
+        self._ctx.interrupted = False
         self._ctx.input = user_input
 
-        async for event in self._runner.run(self._ctx):
-            if self._interrupted:
-                self._ctx.interrupted = True
-
-            match event:
-                case Token(text=t):
-                    self._render.stream_text(t)
-                case ModelStart():
-                    pass
-                case ModelDone(response=resp):
-                    self._render.finish_stream()
-                    self._render.show_reasoning(getattr(resp, "reasoning_content", ""))
-                case ToolStart(tool_name=name):
-                    self._render.show_tool_spinner(name)
-                case ToolDone(tool_name=name, result=r):
-                    self._render.finish_tool(name, r)
-                case ApprovalRequest() as req:
-                    approved = await self._approval.prompt(req)
-                    req.future.set_result(approved)
-                case RunError(error=e):
-                    self._render.show_error(e)
-                case RunDone():
-                    pass
+        await self._runner.run(self._ctx)
 
         total_tokens = self._ctx.budget.consumed_total_tokens
 

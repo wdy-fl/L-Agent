@@ -10,7 +10,7 @@ from agent.tools.base import ToolResult
 
 
 class ApprovalGuard(Middleware):
-    """Approval is handled by AgentRunner's event loop; this middleware is a no-op passthrough."""
+    """Approval is handled by AgentRunner via ctx.request_approval; this middleware is a no-op passthrough."""
 
     def __init__(self) -> None:
         super().__init__("approval.guard", ActionName.tool_call)
