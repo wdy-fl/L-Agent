@@ -7,7 +7,7 @@ from agent.core.context import RunContext
 from agent.core.lifecycle import HookPhase
 from agent.llm.client import ModelResponse
 from agent.steps.base import Step
-from agent.tools.base import ToolCall, ToolPlan
+from agent.tools.base import ToolCall
 
 
 class ToolCallsExtract(Step):
@@ -31,10 +31,8 @@ class ToolCallsExtract(Step):
                 arguments={},
             ))
 
-        plan = ToolPlan(calls=calls)
-
         # 2. Parse JSON arguments
-        for i, call in enumerate(plan.calls):
+        for i, call in enumerate(calls):
             raw_args = resp.tool_calls[i]["function"]["arguments"]
             if not raw_args or raw_args.strip() == "":
                 call.arguments = {}
@@ -59,7 +57,7 @@ class ToolCallsExtract(Step):
                 available_names.add(name)
 
         # 4. Validate schema & resolve tool existence
-        for call in plan.calls:
+        for call in calls:
             if call.error:
                 continue
 
@@ -83,8 +81,5 @@ class ToolCallsExtract(Step):
             if call.tool_name not in available_names:
                 call.error = f"Tool not available: {call.tool_name}"
 
-        # 5. Set serial execution mode
-        plan.execution_mode = "serial"
-
-        ctx.current_tool_plan = plan
+        ctx.current_tool_plan = calls
         return

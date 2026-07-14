@@ -40,9 +40,3 @@ class ToolResult:
     content: str = ""
 
 
-@dataclass
-class ToolPlan:
-    """Execution plan for tool calls in this iteration."""
-
-    calls: list[ToolCall] = field(default_factory=list)
-    execution_mode: str = "serial"

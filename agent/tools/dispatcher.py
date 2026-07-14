@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agent.tools.base import ToolCall, ToolPlan, ToolResult, ToolResultStatus
+from agent.tools.base import ToolCall, ToolResult, ToolResultStatus
 from agent.tools.registry import ToolRegistry
 
 
@@ -10,9 +10,9 @@ class ToolDispatcher:
     def __init__(self, registry: ToolRegistry) -> None:
         self._registry = registry
 
-    def dispatch(self, plan: ToolPlan) -> list[ToolResult]:
+    def dispatch(self, calls: list[ToolCall]) -> list[ToolResult]:
         results: list[ToolResult] = []
-        for call in plan.calls:
+        for call in calls:
             result = self._execute_single(call)
             results.append(result)
         return results
