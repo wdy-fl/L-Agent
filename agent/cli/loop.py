@@ -82,7 +82,7 @@ class CLILoop:
         self._ctx.render = self._render
         self._ctx.request_approval = self._approval.prompt
 
-        self._runner = build_runner(self._ctx)
+        self._runner = build_runner()
 
     async def start(self) -> None:
         """Start the CLI session."""

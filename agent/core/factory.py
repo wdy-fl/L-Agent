@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from agent.actions.model_call import make_llm_stream_action
-from agent.actions.tool_call import make_tool_call_action
-from agent.core.context import RunContext
 from agent.core.runner import AgentRunner
 from agent.steps.after_run import (
     RunFinish,
@@ -31,7 +28,7 @@ from agent.steps.before_tool import ToolCallsExtract
 from agent.steps.registry import StepRegistry
 
 
-def build_runner(ctx: RunContext) -> AgentRunner:
+def build_runner() -> AgentRunner:
     reg = StepRegistry()
     # ---- before_agent ----
     reg.register(RunStart())
@@ -60,8 +57,4 @@ def build_runner(ctx: RunContext) -> AgentRunner:
     reg.register(BranchUpdateResumeHead())
     reg.register(RunFinish())
 
-    return AgentRunner(
-        registry=reg,
-        tool_call=make_tool_call_action(ctx.dispatcher),
-        model_stream=make_llm_stream_action(ctx.client),
-    )
+    return AgentRunner(registry=reg)

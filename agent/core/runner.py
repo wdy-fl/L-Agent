@@ -3,9 +3,6 @@ from __future__ import annotations
 import time
 import traceback
 import uuid
-from collections.abc import AsyncGenerator
-from typing import Any, Callable, Awaitable
-
 from agent.core.context import RunContext
 from agent.core.lifecycle import ActionName, HookPhase
 from agent.llm.client import ModelResponse
@@ -21,15 +18,8 @@ class AgentRunner:
     yielding events, so the CLI loop stays thin.
     """
 
-    def __init__(
-        self,
-        registry: StepRegistry,
-        tool_call: Callable[[RunContext], Any] | Callable[[RunContext], Awaitable[Any]] | None = None,
-        model_stream: Callable[[RunContext], AsyncGenerator[str | ModelResponse, None]] | None = None,
-    ) -> None:
+    def __init__(self, registry: StepRegistry) -> None:
         self._registry = registry
-        self._tool_call = tool_call or (lambda _: None)
-        self._model_stream = model_stream
 
     async def run(self, ctx: RunContext) -> None:
         try:
@@ -74,53 +64,54 @@ class AgentRunner:
 
             self._run_phase(HookPhase.before_model, ctx)
 
-            if self._model_stream:
-                # --- TraceRecord start (inlined from middleware) ---
-                t0 = time.time()
-                if ctx.logger is not None:
-                    req = ctx.current_model_request
-                    ctx.logger.log(
-                        event="model.start",
-                        run_id=ctx.run_id,
-                        iteration=ctx.budget.consumed_iterations,
-                        messages_count=len(req.messages) if req else 0,
-                        tools_count=len(req.tools) if req else 0,
-                    )
+            # --- model call ---
+            if ctx.current_model_request is None:
+                raise RuntimeError("model_request not set before model call")
 
-                response = None
-                async for item in self._model_stream(ctx):
-                    if isinstance(item, str):
-                        if render is not None:
-                            render.stream_text(item)
-                    elif isinstance(item, ModelResponse):
-                        response = item
-                if response is None:
-                    raise RuntimeError("stream ended without ModelResponse")
-                ctx.current_model_response = response
-                self._record_checkpoint(ActionName.model_call, "completed", ctx)
+            t0 = time.time()
+            if ctx.logger is not None:
+                req = ctx.current_model_request
+                ctx.logger.log(
+                    event="model.start",
+                    run_id=ctx.run_id,
+                    iteration=ctx.budget.consumed_iterations,
+                    messages_count=len(req.messages) if req else 0,
+                    tools_count=len(req.tools) if req else 0,
+                )
 
-                # --- TraceRecord end (inlined from middleware) ---
-                if ctx.logger is not None:
-                    elapsed_ms = (time.time() - t0) * 1000
-                    ctx.logger.log(
-                        event="model.done",
-                        run_id=ctx.run_id,
-                        iteration=ctx.budget.consumed_iterations,
-                        elapsed_ms=round(elapsed_ms, 1),
-                        tokens_in=response.usage.input_tokens if response else 0,
-                        tokens_out=response.usage.output_tokens if response else 0,
-                        finish_reason=response.finish_reason if response else "",
-                        content=response.content if response else "",
-                        reasoning_content=response.reasoning_content if response else "",
-                        tool_calls=[
-                            {"id": tc["id"], "name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}
-                            for tc in (response.tool_calls if response else [])
-                        ],
-                    )
+            response = None
+            async for item in ctx.client.stream(ctx.current_model_request):
+                if isinstance(item, str):
+                    if render is not None:
+                        render.stream_text(item)
+                elif isinstance(item, ModelResponse):
+                    response = item
+            if response is None:
+                raise RuntimeError("stream ended without ModelResponse")
+            ctx.current_model_response = response
+            self._record_checkpoint(ActionName.model_call, "completed", ctx)
 
-                if render is not None:
-                    render.finish_stream()
-                    render.show_reasoning(getattr(response, "reasoning_content", ""))
+            if ctx.logger is not None:
+                elapsed_ms = (time.time() - t0) * 1000
+                ctx.logger.log(
+                    event="model.done",
+                    run_id=ctx.run_id,
+                    iteration=ctx.budget.consumed_iterations,
+                    elapsed_ms=round(elapsed_ms, 1),
+                    tokens_in=response.usage.input_tokens if response else 0,
+                    tokens_out=response.usage.output_tokens if response else 0,
+                    finish_reason=response.finish_reason if response else "",
+                    content=response.content if response else "",
+                    reasoning_content=response.reasoning_content if response else "",
+                    tool_calls=[
+                        {"id": tc["id"], "name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}
+                        for tc in (response.tool_calls if response else [])
+                    ],
+                )
+
+            if render is not None:
+                render.finish_stream()
+                render.show_reasoning(getattr(response, "reasoning_content", ""))
 
             self._run_phase(HookPhase.after_model, ctx)
 
@@ -191,9 +182,7 @@ class AgentRunner:
                     )
 
             try:
-                results = self._tool_call(ctx)
-                if hasattr(results, "__await__"):
-                    results = await results
+                results = ctx.dispatcher.dispatch(ctx.current_tool_calls or [])
                 ctx.current_tool_results = results
 
                 # --- AuditRecord end (inlined from middleware) ---
