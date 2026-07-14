@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import traceback
 import uuid
 from collections.abc import AsyncGenerator
@@ -8,7 +9,6 @@ from typing import Any, Callable, Awaitable
 from agent.core.context import RunContext
 from agent.core.lifecycle import ActionName, HookPhase
 from agent.llm.client import ModelResponse
-from agent.middleware.chain import MiddlewareChain
 from agent.steps.registry import StepRegistry
 from agent.timeline.models import Checkpoint, CheckpointType
 from agent.tools.base import ToolCall, ToolResult, ToolResultStatus
@@ -24,12 +24,10 @@ class AgentRunner:
     def __init__(
         self,
         registry: StepRegistry,
-        middleware_chain: MiddlewareChain,
         tool_call: Callable[[RunContext], Any] | Callable[[RunContext], Awaitable[Any]] | None = None,
         model_stream: Callable[[RunContext], AsyncGenerator[str | ModelResponse, None]] | None = None,
     ) -> None:
         self._registry = registry
-        self._chain = middleware_chain
         self._tool_call = tool_call or (lambda _: None)
         self._model_stream = model_stream
 
@@ -63,9 +61,32 @@ class AgentRunner:
             if ctx.interrupted or ctx.budget.exhausted:
                 break
 
+            # --- BudgetGuard (inlined from middleware) ---
+            budget = ctx.budget
+            if budget.consumed_iterations > budget.max_iterations:
+                budget.exhausted = True
+                ctx.interrupted = True
+                break
+            if budget.consumed_total_tokens >= budget.max_tokens:
+                budget.exhausted = True
+                ctx.interrupted = True
+                break
+
             self._run_phase(HookPhase.before_model, ctx)
 
             if self._model_stream:
+                # --- TraceRecord start (inlined from middleware) ---
+                t0 = time.time()
+                if ctx.logger is not None:
+                    req = ctx.current_model_request
+                    ctx.logger.log(
+                        event="model.start",
+                        run_id=ctx.run_id,
+                        iteration=ctx.budget.consumed_iterations,
+                        messages_count=len(req.messages) if req else 0,
+                        tools_count=len(req.tools) if req else 0,
+                    )
+
                 response = None
                 async for item in self._model_stream(ctx):
                     if isinstance(item, str):
@@ -77,6 +98,25 @@ class AgentRunner:
                     raise RuntimeError("stream ended without ModelResponse")
                 ctx.current_model_response = response
                 self._record_checkpoint(ActionName.model_call, "completed", ctx)
+
+                # --- TraceRecord end (inlined from middleware) ---
+                if ctx.logger is not None:
+                    elapsed_ms = (time.time() - t0) * 1000
+                    ctx.logger.log(
+                        event="model.done",
+                        run_id=ctx.run_id,
+                        iteration=ctx.budget.consumed_iterations,
+                        elapsed_ms=round(elapsed_ms, 1),
+                        tokens_in=response.usage.input_tokens if response else 0,
+                        tokens_out=response.usage.output_tokens if response else 0,
+                        finish_reason=response.finish_reason if response else "",
+                        content=response.content if response else "",
+                        reasoning_content=response.reasoning_content if response else "",
+                        tool_calls=[
+                            {"id": tc["id"], "name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}
+                            for tc in (response.tool_calls if response else [])
+                        ],
+                    )
 
                 if render is not None:
                     render.finish_stream()
@@ -136,12 +176,50 @@ class AgentRunner:
         should_execute = calls is None or bool(calls)
         if should_execute:
             self._record_checkpoint(ActionName.tool_call, "started", ctx)
+
+            # --- AuditRecord start (inlined from middleware) ---
+            t0 = time.time()
+            call_id_to_name: dict[str, str] = {}
+            if ctx.logger is not None and calls:
+                for tc in calls:
+                    call_id_to_name[tc.call_id] = tc.tool_name
+                    ctx.logger.log(
+                        event="tool.start",
+                        run_id=ctx.run_id,
+                        tool_name=tc.tool_name,
+                        arguments=tc.arguments,
+                    )
+
             try:
-                wrapped = self._chain.execute(ActionName.tool_call, ctx, lambda: self._tool_call(ctx))
-                if hasattr(wrapped, "__await__"):
-                    ctx.current_tool_results = await wrapped
-                else:
-                    ctx.current_tool_results = wrapped
+                results = self._tool_call(ctx)
+                if hasattr(results, "__await__"):
+                    results = await results
+                ctx.current_tool_results = results
+
+                # --- AuditRecord end (inlined from middleware) ---
+                elapsed_ms = (time.time() - t0) * 1000
+                if ctx.logger is not None and isinstance(results, list):
+                    for r in results:
+                        if isinstance(r, ToolResult):
+                            tool_name = call_id_to_name.get(r.call_id, r.call_id)
+                            ctx.logger.log(
+                                event="tool.done",
+                                run_id=ctx.run_id,
+                                tool_name=tool_name,
+                                elapsed_ms=round(elapsed_ms, 1),
+                                status=r.status.value,
+                                result=r.content,
+                            )
+
+                # --- ResultLimitGuard (inlined from middleware) ---
+                if isinstance(results, list):
+                    for result in results:
+                        if isinstance(result, ToolResult) and len(result.content) > 50_000:
+                            result.content = (
+                                result.content[:50_000]
+                                + f"\n\n[Truncated: result exceeded 50_000 characters]"
+                            )
+
                 self._record_checkpoint(ActionName.tool_call, "completed", ctx)
             except Exception:
                 self._record_checkpoint(ActionName.tool_call, "failed", ctx)

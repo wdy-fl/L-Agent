@@ -6,9 +6,6 @@ from agent.actions.model_call import make_llm_stream_action
 from agent.actions.tool_call import make_tool_call_action
 from agent.core.context import RunContext
 from agent.core.runner import AgentRunner
-from agent.middleware.chain import MiddlewareChain
-from agent.middleware.model import BudgetGuard, TraceRecord
-from agent.middleware.tool import AuditRecord, ResultLimitGuard
 from agent.steps.after_run import (
     RunFinish,
     RunMarkTerminalState,
@@ -63,16 +60,8 @@ def build_runner(ctx: RunContext) -> AgentRunner:
     reg.register(BranchUpdateResumeHead())
     reg.register(RunFinish())
 
-    chain = MiddlewareChain()
-    chain.add(BudgetGuard())
-    chain.add(TraceRecord())
-
-    chain.add(AuditRecord())
-    chain.add(ResultLimitGuard())
-
     return AgentRunner(
         registry=reg,
-        middleware_chain=chain,
         tool_call=make_tool_call_action(ctx.dispatcher),
         model_stream=make_llm_stream_action(ctx.client),
     )

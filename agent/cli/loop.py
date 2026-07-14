@@ -17,8 +17,6 @@ from agent.core.context import BudgetState, RunContext
 from agent.core.factory import build_runner
 from agent.llm.client import ModelConfig, OpenAICompatibleClient
 from agent.logging.logger import AgentLogger
-from agent.middleware.chain import MiddlewareChain  # noqa: F401
-from agent.steps.registry import StepRegistry  # noqa: F401
 from agent.storage.sqlite import SQLiteTimelineStore
 from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS, create_builtin_registry, make_web_search_tool
 from agent.tools.dispatcher import ToolDispatcher
