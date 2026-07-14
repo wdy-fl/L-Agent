@@ -21,11 +21,12 @@ from agent.steps.before_run import (
     CheckpointCreateUserSnapshot,
 )
 from agent.steps.before_model import (
+    BudgetGuard,
     IterationCreate,
     ModelRequestCompose,
 )
 from agent.steps.before_tool import ToolCallsExtract
-from agent.steps.registry import StepRegistry
+from agent.steps.registry import StepConfig, StepRegistry
 
 
 def build_runner() -> AgentRunner:
@@ -36,6 +37,7 @@ def build_runner() -> AgentRunner:
     reg.register(CheckpointCreateUserSnapshot())
 
     # ---- before_model ----
+    reg.register(BudgetGuard(), StepConfig(priority=10))
     reg.register(IterationCreate())
     reg.register(ModelRequestCompose())
 

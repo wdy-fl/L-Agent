@@ -48,21 +48,10 @@ class AgentRunner:
         render = ctx.render
 
         while True:
+            self._run_phase(HookPhase.before_model, ctx)
+
             if ctx.interrupted or ctx.budget.exhausted:
                 break
-
-            # --- BudgetGuard (inlined from middleware) ---
-            budget = ctx.budget
-            if budget.consumed_iterations > budget.max_iterations:
-                budget.exhausted = True
-                ctx.interrupted = True
-                break
-            if budget.consumed_total_tokens >= budget.max_tokens:
-                budget.exhausted = True
-                ctx.interrupted = True
-                break
-
-            self._run_phase(HookPhase.before_model, ctx)
 
             # --- model call ---
             if ctx.current_model_request is None:

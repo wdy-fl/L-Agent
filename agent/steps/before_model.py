@@ -6,6 +6,24 @@ from agent.llm.client import ModelRequest
 from agent.steps.base import Step
 
 
+class BudgetGuard(Step):
+    """Check budget limits before each model call; set exhausted/interrupted if exceeded."""
+
+    def __init__(self) -> None:
+        super().__init__("budget.guard", HookPhase.before_model)
+
+    def run(self, ctx: RunContext) -> None:
+        budget = ctx.budget
+        if budget.consumed_iterations > budget.max_iterations:
+            budget.exhausted = True
+            ctx.interrupted = True
+            return
+        if budget.consumed_total_tokens >= budget.max_tokens:
+            budget.exhausted = True
+            ctx.interrupted = True
+            return
+
+
 class IterationCreate(Step):
     """Increment iteration counter in ctx.budget."""
 
