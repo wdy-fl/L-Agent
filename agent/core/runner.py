@@ -87,64 +87,70 @@ class AgentRunner:
             if ctx.has_tool_calls:
                 self._run_phase(HookPhase.before_tool, ctx)
 
-                plan = ctx.current_tool_plan
-                if plan and hasattr(plan, "calls") and plan.calls and ctx.always_confirm_tools:
-                    approved_calls: list[ToolCall] = []
-                    for call in plan.calls:
-                        if call.error:
-                            approved_calls.append(call)
-                            continue
-                        if call.tool_name not in ctx.always_confirm_tools:
-                            approved_calls.append(call)
-                            continue
-                        risk_level = "high" if call.tool_name in ("terminal",) else "medium"
-                        if ctx.request_approval is not None:
-                            approved = await ctx.request_approval(
-                                call.tool_name, call.arguments, risk_level
-                            )
-                        else:
-                            approved = False
-                        if approved:
-                            approved_calls.append(call)
-                        else:
-                            result = ToolResult(
-                                call_id=call.call_id,
-                                status=ToolResultStatus.denied,
-                                content=f"Tool '{call.tool_name}' was denied by user.",
-                            )
-                            if ctx.current_tool_results is None:
-                                ctx.current_tool_results = []
-                            ctx.current_tool_results.append(result)
-                    plan.calls = approved_calls
-
-                for tool_call_info in self._get_tool_calls(ctx):
-                    if render is not None:
-                        render.show_tool_spinner(tool_call_info.get("name", ""))
-
-                should_execute = (plan is None) or (not hasattr(plan, "calls")) or plan.calls
-                if should_execute:
-                    self._record_checkpoint(ActionName.tool_call, "started", ctx)
-                    try:
-                        wrapped = self._chain.execute(ActionName.tool_call, ctx, lambda: self._tool_call(ctx))
-                        if hasattr(wrapped, "__await__"):
-                            ctx.current_tool_results = await wrapped
-                        else:
-                            ctx.current_tool_results = wrapped
-                        self._record_checkpoint(ActionName.tool_call, "completed", ctx)
-                    except Exception:
-                        self._record_checkpoint(ActionName.tool_call, "failed", ctx)
-                        raise
-
-                for tool_result in self._get_tool_results(ctx):
-                    if render is not None:
-                        render.finish_tool(
-                            tool_result.get("name", ""), tool_result.get("content")
-                        )
+                await self._execute_tool(ctx)
 
                 self._run_phase(HookPhase.after_tool, ctx)
                 ctx.has_tool_calls = False
             else:
                 break
+
+    async def _execute_tool(self, ctx: RunContext) -> None:
+        """Run the tool-call phase: approval, execution, and rendering."""
+        render = ctx.render
+        plan = ctx.current_tool_plan
+
+        if plan and hasattr(plan, "calls") and plan.calls and ctx.always_confirm_tools:
+            approved_calls: list[ToolCall] = []
+            for call in plan.calls:
+                if call.error:
+                    approved_calls.append(call)
+                    continue
+                if call.tool_name not in ctx.always_confirm_tools:
+                    approved_calls.append(call)
+                    continue
+                risk_level = "high" if call.tool_name in ("terminal",) else "medium"
+                if ctx.request_approval is not None:
+                    approved = await ctx.request_approval(
+                        call.tool_name, call.arguments, risk_level
+                    )
+                else:
+                    approved = False
+                if approved:
+                    approved_calls.append(call)
+                else:
+                    result = ToolResult(
+                        call_id=call.call_id,
+                        status=ToolResultStatus.denied,
+                        content=f"Tool '{call.tool_name}' was denied by user.",
+                    )
+                    if ctx.current_tool_results is None:
+                        ctx.current_tool_results = []
+                    ctx.current_tool_results.append(result)
+            plan.calls = approved_calls
+
+        for tool_call_info in self._get_tool_calls(ctx):
+            if render is not None:
+                render.show_tool_spinner(tool_call_info.get("name", ""))
+
+        should_execute = (plan is None) or (not hasattr(plan, "calls")) or plan.calls
+        if should_execute:
+            self._record_checkpoint(ActionName.tool_call, "started", ctx)
+            try:
+                wrapped = self._chain.execute(ActionName.tool_call, ctx, lambda: self._tool_call(ctx))
+                if hasattr(wrapped, "__await__"):
+                    ctx.current_tool_results = await wrapped
+                else:
+                    ctx.current_tool_results = wrapped
+                self._record_checkpoint(ActionName.tool_call, "completed", ctx)
+            except Exception:
+                self._record_checkpoint(ActionName.tool_call, "failed", ctx)
+                raise
+
+        for tool_result in self._get_tool_results(ctx):
+            if render is not None:
+                render.finish_tool(
+                    tool_result.get("name", ""), tool_result.get("content")
+                )
 
     def _get_tool_calls(self, ctx: RunContext) -> list[dict]:
         if ctx.current_tool_plan is None:
