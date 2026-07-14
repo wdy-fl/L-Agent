@@ -129,9 +129,9 @@ class AgentRunner:
             ctx.current_tool_calls = approved_calls
             calls = approved_calls
 
-        for tool_call_info in self._get_tool_calls(ctx):
+        for call in ctx.current_tool_calls or []:
             if render is not None:
-                render.show_tool_spinner(tool_call_info.get("name", ""))
+                render.show_tool_spinner(call.tool_name)
 
         should_execute = calls is None or bool(calls)
         if should_execute:
@@ -147,24 +147,13 @@ class AgentRunner:
                 self._record_checkpoint(ActionName.tool_call, "failed", ctx)
                 raise
 
-        for tool_result in self._get_tool_results(ctx):
-            if render is not None:
-                render.finish_tool(
-                    tool_result.get("name", ""), tool_result.get("content")
-                )
-
-    def _get_tool_calls(self, ctx: RunContext) -> list[dict]:
-        if ctx.current_tool_calls is None:
-            return []
-        return [{"name": c.tool_name, "arguments": c.arguments} for c in ctx.current_tool_calls]
-
-    def _get_tool_results(self, ctx: RunContext) -> list[dict]:
         results = ctx.current_tool_results
-        if results is None:
-            return []
         if isinstance(results, list):
-            return [{"name": getattr(r, "call_id", ""), "content": getattr(r, "content", str(r))} for r in results]
-        return []
+            for result in results:
+                if render is not None:
+                    render.finish_tool(
+                        getattr(result, "call_id", ""), getattr(result, "content", str(result))
+                    )
 
     def _run_phase(self, phase: HookPhase, ctx: RunContext) -> None:
         for step in self._registry.get_steps(phase):

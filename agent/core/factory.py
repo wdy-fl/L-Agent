@@ -8,7 +8,7 @@ from agent.core.context import RunContext
 from agent.core.runner import AgentRunner
 from agent.middleware.chain import MiddlewareChain
 from agent.middleware.model import BudgetGuard, TraceRecord
-from agent.middleware.tool import ApprovalGuard, AuditRecord, ResultLimitGuard
+from agent.middleware.tool import AuditRecord, ResultLimitGuard
 from agent.steps.after_run import (
     RunFinish,
     RunMarkTerminalState,
@@ -66,7 +66,7 @@ def build_runner(ctx: RunContext) -> AgentRunner:
     chain = MiddlewareChain()
     chain.add(BudgetGuard())
     chain.add(TraceRecord())
-    chain.add(ApprovalGuard())
+
     chain.add(AuditRecord())
     chain.add(ResultLimitGuard())
 

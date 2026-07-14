@@ -9,16 +9,6 @@ from agent.middleware.base import Middleware
 from agent.tools.base import ToolResult
 
 
-class ApprovalGuard(Middleware):
-    """Approval is handled by AgentRunner via ctx.request_approval; this middleware is a no-op passthrough."""
-
-    def __init__(self) -> None:
-        super().__init__("approval.guard", ActionName.tool_call)
-
-    def __call__(self, ctx: RunContext, next_call: Callable[[], Any]) -> Any:
-        return next_call()
-
-
 class AuditRecord(Middleware):
     """Record tool execution timing and metadata."""
 
