@@ -4,7 +4,6 @@ from agent.llm.client import (
     ModelRequest,
     ModelResponse,
     OpenAICompatibleClient,
-    ToolCallRequest,
     Usage,
 )
 
@@ -15,6 +14,5 @@ __all__ = [
     "ModelConfig",
     "ModelRequest",
     "ModelResponse",
-    "ToolCallRequest",
     "Usage",
 ]

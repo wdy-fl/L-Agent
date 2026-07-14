@@ -30,15 +30,6 @@ class ModelRequest:
 
 
 @dataclass
-class ToolCallRequest:
-    """A single tool call within a model response."""
-
-    id: str = ""
-    name: str = ""
-    arguments: str = ""
-
-
-@dataclass
 class Usage:
     """Token usage for a single model call."""
 
@@ -57,7 +48,7 @@ class ModelResponse:
     content: str = ""
     # 推理模型的思维链（GLM-5.2 等）。web_search 的检索引用也落在这里。
     reasoning_content: str = ""
-    tool_calls: list[ToolCallRequest] = field(default_factory=list)
+    tool_calls: list[dict] = field(default_factory=list)
     usage: Usage = field(default_factory=Usage)
     finish_reason: str = "stop"
 
@@ -129,7 +120,8 @@ class OpenAICompatibleClient(LLMClient):
                         content_parts.append(text)
                         yield text
 
-                    # 推理模型的思维链（不实时吐给前端，仅在最终响应里带回）。
+                    # 推理模型的思维链（不实时吐给前端，仅在最终响应里带回）。 
+                    # TODO
                     if rc := delta.get("reasoning_content"):
                         reasoning_parts.append(rc)
 
@@ -137,22 +129,23 @@ class OpenAICompatibleClient(LLMClient):
                         for tc in tc_list:
                             idx = tc["index"]
                             if idx not in tool_calls_raw:
-                                tool_calls_raw[idx] = {"id": tc.get("id", ""), "name": "", "arguments": ""}
+                                tool_calls_raw[idx] = {
+                                    "id": tc.get("id", ""),
+                                    "type": "function",
+                                    "function": {"name": "", "arguments": ""},
+                                }
                             if fn := tc.get("function"):
                                 if name := fn.get("name"):
-                                    tool_calls_raw[idx]["name"] = name
+                                    tool_calls_raw[idx]["function"]["name"] = name
                                 if args := fn.get("arguments"):
-                                    tool_calls_raw[idx]["arguments"] += args
+                                    tool_calls_raw[idx]["function"]["arguments"] += args
 
                     if fr := chunk["choices"][0].get("finish_reason"):
                         finish_reason = fr
                     if u := chunk.get("usage"):
                         usage_data = u
 
-        tool_calls = [
-            ToolCallRequest(id=v["id"], name=v["name"], arguments=v["arguments"])
-            for _, v in sorted(tool_calls_raw.items())
-        ] if tool_calls_raw else []
+        tool_calls = [v for _, v in sorted(tool_calls_raw.items())] if tool_calls_raw else []
 
         if tool_calls and finish_reason != "tool_calls":
             finish_reason = "tool_calls"
@@ -192,16 +185,19 @@ class OpenAICompatibleClient(LLMClient):
         content = message.get("content") or ""
         reasoning_content = message.get("reasoning_content") or ""
 
-        tool_calls: list[ToolCallRequest] = []
+        tool_calls: list[dict] = []
         if raw_calls := message.get("tool_calls"):
-            for tc in raw_calls:
-                tool_calls.append(
-                    ToolCallRequest(
-                        id=tc.get("id", ""),
-                        name=tc["function"]["name"],
-                        arguments=tc["function"].get("arguments", ""),
-                    )
-                )
+            tool_calls = [
+                {
+                    "id": tc.get("id", ""),
+                    "type": tc.get("type", "function"),
+                    "function": {
+                        "name": tc["function"]["name"],
+                        "arguments": tc["function"].get("arguments", ""),
+                    },
+                }
+                for tc in raw_calls
+            ]
 
         usage_data = data.get("usage", {})
         usage = Usage(

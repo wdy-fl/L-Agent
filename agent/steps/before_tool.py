@@ -24,8 +24,8 @@ class ToolCallsExtract(Step):
         calls: list[ToolCall] = []
         for tc in resp.tool_calls:
             calls.append(ToolCall(
-                call_id=tc.id,
-                tool_name=tc.name,
+                call_id=tc["id"],
+                tool_name=tc["function"]["name"],
                 arguments={},
             ))
 
@@ -50,7 +50,7 @@ class ToolCallsParseArguments(Step):
             return []
 
         for i, call in enumerate(plan.calls):
-            raw_args = resp.tool_calls[i].arguments
+            raw_args = resp.tool_calls[i]["function"]["arguments"]
             if not raw_args or raw_args.strip() == "":
                 call.arguments = {}
                 continue

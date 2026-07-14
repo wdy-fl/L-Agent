@@ -20,12 +20,8 @@ class MessageCommitAssistant(Step):
         if resp is None or not isinstance(resp, ModelResponse):
             return []
 
-        tool_calls_data: list[dict] = []
-        if resp.tool_calls:
-            tool_calls_data = [
-                {"id": tc.id, "type": "function", "function": {"name": tc.name, "arguments": tc.arguments}}
-                for tc in resp.tool_calls
-            ]
+        tool_calls_data = resp.tool_calls
+        if tool_calls_data:
             ctx.messages.append({"role": "assistant", "content": resp.content, "tool_calls": tool_calls_data})
         else:
             ctx.messages.append({"role": "assistant", "content": resp.content})

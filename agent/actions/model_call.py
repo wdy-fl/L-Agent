@@ -44,7 +44,7 @@ def make_llm_stream_action(client: LLMClient):
                 content=response.content,
                 reasoning_content=response.reasoning_content,
                 tool_calls=[
-                    {"id": tc.id, "name": tc.name, "arguments": tc.arguments}
+                    {"id": tc["id"], "name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}
                     for tc in response.tool_calls
                 ],
             )
