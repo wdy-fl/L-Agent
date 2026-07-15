@@ -12,10 +12,9 @@ from rich.table import Table
 from agent.cli.select import select_prompt
 from agent.core.context import BudgetState, RunContext
 from agent.storage.sqlite import SQLiteTimelineStore
-from agent.timeline.models import CheckpointType, Message
+from agent.timeline.models import Branch, CheckpointType, Message, Session
 from agent.timeline.resume import ResumeResult, resume
 from agent.timeline.rewind import RewindResult, rewind
-from agent.timeline.session_factory import create_session_with_default_branch
 
 
 def _message_to_dict(message: Message) -> dict:
@@ -80,12 +79,40 @@ class CommandDispatcher:
         return True
 
     async def _cmd_new(self, arg: str, ctx: RunContext) -> None:
-        session = create_session_with_default_branch(self._store)
-        self._session_id = session.session_id
-        self._branch_id = session.active_branch_id
+        existing = self._store.find_empty_session()
+        if existing is not None:
+            self._session_id = existing.session_id
+            self._branch_id = existing.active_branch_id
 
-        ctx.session_id = session.session_id
-        ctx.branch_id = session.active_branch_id
+            ctx.session_id = existing.session_id
+            ctx.branch_id = existing.active_branch_id
+
+            msgs = self._store.get_messages_by_branch(existing.active_branch_id)
+            ctx.messages = [_message_to_dict(m) for m in msgs]
+
+            ctx.budget = BudgetState(
+                max_iterations=ctx.budget.max_iterations,
+                max_tokens=ctx.budget.max_tokens,
+            )
+
+            self._console.print(
+                f"[green]Reusing empty session {existing.session_id[:8]}...[/green]"
+            )
+            return
+
+        session_id = str(uuid.uuid4())
+        branch_id = str(uuid.uuid4())
+
+        self._store.create_branch(Branch(branch_id=branch_id, session_id=session_id))
+        self._store.create_session(Session(
+            session_id=session_id, title="", active_branch_id=branch_id,
+        ))
+
+        self._session_id = session_id
+        self._branch_id = branch_id
+
+        ctx.session_id = session_id
+        ctx.branch_id = branch_id
 
         system_prompt = Path("workspace/AGENT.md").read_text(encoding="utf-8")
         ctx.messages = [{"role": "system", "content": system_prompt}]

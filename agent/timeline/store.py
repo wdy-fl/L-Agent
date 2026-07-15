@@ -26,6 +26,10 @@ class TimelineStore(ABC):
     @abstractmethod
     def list_sessions(self) -> list[Session]: ...
 
+    @abstractmethod
+    def find_empty_session(self) -> Session | None:
+        """Return a session that has only system messages (no actual conversation), or None."""
+
     # --- Branch ---
     @abstractmethod
     def create_branch(self, branch: Branch) -> None: ...

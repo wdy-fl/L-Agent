@@ -71,6 +71,23 @@ class SQLiteTimelineStore(TimelineStore):
             for row in rows
         ]
 
+    def find_empty_session(self) -> Session | None:
+        """Return a session that has only system messages (no actual conversation), or None."""
+        row = self._conn.execute(
+            "SELECT * FROM sessions s"
+            " WHERE EXISTS (SELECT 1 FROM messages m WHERE m.session_id = s.session_id)"
+            " AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.session_id = s.session_id AND m.role != 'system')"
+            " ORDER BY s.updated_at DESC LIMIT 1"
+        ).fetchone()
+        if not row:
+            return None
+        return Session(
+            session_id=row["session_id"], title=row["title"],
+            active_branch_id=row["active_branch_id"],
+            created_at=_str_to_dt(row["created_at"]),
+            updated_at=_str_to_dt(row["updated_at"]),
+        )
+
     # --- Branch ---
     def create_branch(self, branch: Branch) -> None:
         self._conn.execute(
