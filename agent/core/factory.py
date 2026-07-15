@@ -41,7 +41,7 @@ from agent.steps.registry import StepRegistry
 
 def build_runner() -> AgentRunner:
     reg = StepRegistry()
-    # ---- before_agent ----
+    # ---- before_run ----
     reg.register(RunStart())
     reg.register(MessageCommitUser())
     reg.register(CheckpointCreateUserSnapshot())
@@ -68,7 +68,7 @@ def build_runner() -> AgentRunner:
     reg.register(MessageCommitToolResults())
     reg.register(ToolResultsRender())
 
-    # ---- after_agent ----
+    # ---- after_run ----
     reg.register(RunMarkTerminalState())
     reg.register(CheckpointRecordRunTerminalState())
     reg.register(BranchUpdateResumeHead())

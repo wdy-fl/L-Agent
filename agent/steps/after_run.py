@@ -13,7 +13,7 @@ class RunFinish(Step):
     """Log run.done and record elapsed time."""
 
     def __init__(self) -> None:
-        super().__init__("run.finish", HookPhase.after_agent)
+        super().__init__("run.finish", HookPhase.after_run)
 
     async def run(self, ctx: RunContext) -> None:
         ctx.elapsed_ms = (time.time() - ctx.started_at) * 1000
@@ -33,7 +33,7 @@ class RunMarkTerminalState(Step):
     """Update AgentRun status to completed/failed/interrupted."""
 
     def __init__(self) -> None:
-        super().__init__("run.mark_terminal_state", HookPhase.after_agent)
+        super().__init__("run.mark_terminal_state", HookPhase.after_run)
 
     async def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
@@ -49,7 +49,7 @@ class CheckpointRecordRunTerminalState(Step):
     """Create runtime checkpoint for run terminal state."""
 
     def __init__(self) -> None:
-        super().__init__("checkpoint.record_run_terminal_state", HookPhase.after_agent)
+        super().__init__("checkpoint.record_run_terminal_state", HookPhase.after_run)
 
     async def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
@@ -72,7 +72,7 @@ class BranchUpdateResumeHead(Step):
     """Update branch.resume_head when run completes successfully."""
 
     def __init__(self) -> None:
-        super().__init__("branch.update_resume_head", HookPhase.after_agent)
+        super().__init__("branch.update_resume_head", HookPhase.after_run)
 
     async def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store

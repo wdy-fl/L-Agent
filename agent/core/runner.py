@@ -21,7 +21,7 @@ class AgentRunner:
 
     async def run(self, ctx: RunContext) -> None:
         try:
-            await self._run_phase(HookPhase.before_agent, ctx)
+            await self._run_phase(HookPhase.before_run, ctx)
             await self._react_loop(ctx)
             if ctx.interrupted:
                 ctx.status = "interrupted"
@@ -42,7 +42,7 @@ class AgentRunner:
             if ctx.render is not None:
                 ctx.render.show_error(exc)
         finally:
-            await self._run_phase(HookPhase.after_agent, ctx)
+            await self._run_phase(HookPhase.after_run, ctx)
 
     async def _react_loop(self, ctx: RunContext) -> None:
         render = ctx.render

@@ -14,7 +14,7 @@ class RunStart(Step):
     """Write AgentRun record to TimelineStore (status=running), log run.start."""
 
     def __init__(self) -> None:
-        super().__init__("run.create", HookPhase.before_agent)
+        super().__init__("run.create", HookPhase.before_run)
 
     async def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
@@ -41,7 +41,7 @@ class MessageCommitUser(Step):
     """Persist user input as role=user message to branch timeline."""
 
     def __init__(self) -> None:
-        super().__init__("message.commit_user", HookPhase.before_agent)
+        super().__init__("message.commit_user", HookPhase.before_run)
 
     async def run(self, ctx: RunContext) -> None:
         ctx.messages.append({"role": "user", "content": ctx.input})
@@ -67,7 +67,7 @@ class CheckpointCreateUserSnapshot(Step):
     """Create user_snapshot checkpoint after committing user message."""
 
     def __init__(self) -> None:
-        super().__init__("checkpoint.create_user_snapshot", HookPhase.before_agent)
+        super().__init__("checkpoint.create_user_snapshot", HookPhase.before_run)
 
     async def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
