@@ -69,7 +69,7 @@ class RunContext:
     final_result: Any = None
     status: str = "running"
 
-    # --- error info (set by runner when status == "failed") ---
+    # --- error info (set by runner when status == "error") ---
     error_type: str = ""
     error_message: str = ""
     error_traceback: str = ""

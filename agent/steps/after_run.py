@@ -104,9 +104,9 @@ class RunStatusLogging(Step):
                 max_tokens=ctx.budget.max_tokens,
                 elapsed_ms=round(ctx.elapsed_ms, 1),
             )
-        elif ctx.status == "failed":
+        elif ctx.status == "error":
             ctx.logger.log(
-                event="run.failed",
+                event="run.error",
                 run_id=ctx.run_id,
                 error_type=ctx.error_type,
                 error_message=ctx.error_message,

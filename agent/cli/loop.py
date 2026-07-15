@@ -131,8 +131,8 @@ class CLILoop:
 
         if self._ctx.status == "interrupted":
             self._renderer.show_interrupted()
-        elif self._ctx.status == "failed":
-            self._renderer.show_run_failed()
+        elif self._ctx.status == "error":
+            self._renderer.show_error(self._ctx)
         elif self._ctx.status in ("completed", "exhausted"):
             self._renderer.show_status(
                 self._ctx.budget.consumed_iterations,

@@ -86,9 +86,13 @@ class Renderer:
             expand=False,
         ))
 
-    def show_error(self, error: Exception) -> None:
+    def show_error(self, ctx) -> None:
+        """Display error info from the run context."""
+        error_msg = f"[bold]{ctx.error_type}[/bold]: {ctx.error_message}"
+        if ctx.error_traceback:
+            error_msg += f"\n\n[dim]{ctx.error_traceback}[/dim]"
         self._console.print(Panel(
-            str(error),
+            error_msg,
             title="[bold red]Error[/bold red]",
             border_style="red",
         ))
@@ -102,5 +106,3 @@ class Renderer:
     def show_interrupted(self) -> None:
         self._console.print("[yellow]⚡ Run interrupted[/yellow]")
 
-    def show_run_failed(self) -> None:
-        self._console.print("[red]✗ Run failed[/red]")

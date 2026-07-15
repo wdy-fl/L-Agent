@@ -30,7 +30,7 @@ class AgentRunner:
             else:
                 ctx.status = "completed"
         except Exception as exc:
-            ctx.status = "failed"
+            ctx.status = "error"
             ctx.error_type = type(exc).__name__
             ctx.error_message = str(exc)
             ctx.error_traceback = traceback.format_exc()
