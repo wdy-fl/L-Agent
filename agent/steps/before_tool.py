@@ -164,11 +164,13 @@ class ToolExecutionStart(Step):
         ctx.tool_start_time = time.time()
 
         # Log tool.start events
-        if ctx.logger is not None:
-            for tc in calls:
-                ctx.logger.log(
-                    event="tool.start",
-                    run_id=ctx.run_id,
-                    tool_name=tc.tool_name,
-                    arguments=tc.arguments,
-                )
+        from agent.logging import get_logger
+
+        logger = get_logger()
+        for tc in calls:
+            logger.log(
+                event="tool.start",
+                run_id=ctx.run_id,
+                tool_name=tc.tool_name,
+                arguments=tc.arguments,
+            )

@@ -16,7 +16,7 @@ from agent.config.settings import Settings
 from agent.core.context import BudgetState, RunContext
 from agent.core.factory import build_runner
 from agent.llm.client import ModelConfig, OpenAICompatibleClient
-from agent.logging.logger import AgentLogger
+from agent.logging import init_logger
 from agent.storage.sqlite import SQLiteTimelineStore
 from agent.tools.builtin import ALWAYS_CONFIRM_TOOLS, AUTO_APPROVE_TOOLS, create_builtin_registry, make_web_search_tool
 from agent.tools.dispatcher import ToolDispatcher
@@ -69,10 +69,7 @@ class CLILoop:
         )
         await self._command_dispatcher.dispatch("/new", self._ctx)
 
-        self._ctx.logger = AgentLogger(
-            logs_dir=Path("workspace/logs"),
-            session_id=self._ctx.session_id,
-        )
+        init_logger(Path("workspace/logs"), session_id=self._ctx.session_id)
 
         self._ctx.available_tools = tool_registry.list_schemas()
         self._ctx.client = OpenAICompatibleClient(model_config)

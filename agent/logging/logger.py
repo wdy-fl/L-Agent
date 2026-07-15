@@ -1,6 +1,8 @@
 """AgentLogger: structured JSON Lines logging for agent runs.
 
 Each session writes to its own file: workspace/logs/{session_id}.jsonl
+
+Session ID is mutable so /new can switch log files without recreating the logger.
 """
 
 from __future__ import annotations
@@ -17,11 +19,23 @@ class AgentLogger:
     Usage:
         logger = AgentLogger(Path("workspace/logs"), "sess_abc")
         logger.log(event="run.start", run_id="r1", input="hello")
+        logger.session_id = "sess_xyz"  # switch log file for new session
     """
 
-    def __init__(self, logs_dir: Path, session_id: str) -> None:
-        self._file = logs_dir / f"{session_id}.jsonl"
-        self._file.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self, logs_dir: Path, session_id: str = "") -> None:
+        self._logs_dir = Path(logs_dir)
+        self._logs_dir.mkdir(parents=True, exist_ok=True)
+        self._session_id = session_id
+        self._file = self._logs_dir / f"{session_id}.jsonl" if session_id else self._logs_dir / "_default.jsonl"
+
+    @property
+    def session_id(self) -> str:
+        return self._session_id
+
+    @session_id.setter
+    def session_id(self, value: str) -> None:
+        self._session_id = value
+        self._file = self._logs_dir / f"{value}.jsonl"
 
     def log(self, **kwargs: Any) -> None:
         """Append a JSON line to the log file. ``ts`` is added automatically."""

@@ -9,6 +9,8 @@ from typing import Any
 
 import httpx
 
+from agent.logging import get_logger
+
 
 @dataclass
 class ModelConfig:
@@ -76,7 +78,6 @@ class LLMClient(ABC):
     async def stream(
         self,
         request: ModelRequest,
-        logger: Any = None,
         run_id: str = "",
         iteration: int = 0,
     ) -> AsyncGenerator[str | ModelResponse, None]:
@@ -112,19 +113,17 @@ class OpenAICompatibleClient(LLMClient):
     async def stream(
         self,
         request: ModelRequest,
-        logger: Any = None,
         run_id: str = "",
         iteration: int = 0,
     ) -> AsyncGenerator[StreamDelta | ModelResponse, None]:
         t0 = time.time()
-        if logger is not None:
-            logger.log(
-                event="model.start",
-                run_id=run_id,
-                iteration=iteration,
-                messages_count=len(request.messages),
-                tools_count=len(request.tools),
-            )
+        get_logger().log(
+            event="model.start",
+            run_id=run_id,
+            iteration=iteration,
+            messages_count=len(request.messages),
+            tools_count=len(request.tools),
+        )
 
         payload = self._build_payload(request)
         payload["stream"] = True
@@ -197,23 +196,22 @@ class OpenAICompatibleClient(LLMClient):
             finish_reason=finish_reason,
         )
 
-        if logger is not None:
-            elapsed_ms = (time.time() - t0) * 1000
-            logger.log(
-                event="model.done",
-                run_id=run_id,
-                iteration=iteration,
-                elapsed_ms=round(elapsed_ms, 1),
-                tokens_in=response.usage.input_tokens,
-                tokens_out=response.usage.output_tokens,
-                finish_reason=response.finish_reason,
-                content=response.content,
-                reasoning_content=response.reasoning_content,
-                tool_calls=[
-                    {"id": tc["id"], "name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}
-                    for tc in response.tool_calls
-                ],
-            )
+        elapsed_ms = (time.time() - t0) * 1000
+        get_logger().log(
+            event="model.done",
+            run_id=run_id,
+            iteration=iteration,
+            elapsed_ms=round(elapsed_ms, 1),
+            tokens_in=response.usage.input_tokens,
+            tokens_out=response.usage.output_tokens,
+            finish_reason=response.finish_reason,
+            content=response.content,
+            reasoning_content=response.reasoning_content,
+            tool_calls=[
+                {"id": tc["id"], "name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}
+                for tc in response.tool_calls
+            ],
+        )
 
         yield response
 

@@ -16,16 +16,17 @@ class RunFinish(Step):
         super().__init__("run.finish", HookPhase.after_run)
 
     async def run(self, ctx: RunContext) -> None:
+        from agent.logging import get_logger
+
         ctx.elapsed_ms = (time.time() - ctx.started_at) * 1000
-        if ctx.logger:
-            ctx.logger.log(
-                event="run.done",
-                run_id=ctx.run_id,
-                status=ctx.status,
-                elapsed_ms=round(ctx.elapsed_ms, 1),
-                total_iterations=ctx.budget.consumed_iterations,
-                total_tokens=ctx.budget.consumed_total_tokens,
-            )
+        get_logger().log(
+            event="run.done",
+            run_id=ctx.run_id,
+            status=ctx.status,
+            elapsed_ms=round(ctx.elapsed_ms, 1),
+            total_iterations=ctx.budget.consumed_iterations,
+            total_tokens=ctx.budget.consumed_total_tokens,
+        )
         return
 
 
@@ -75,11 +76,12 @@ class RunStatusLogging(Step):
         super().__init__("run.status_logging", HookPhase.after_run)
 
     async def run(self, ctx: RunContext) -> None:
-        if ctx.logger is None:
-            return
+        from agent.logging import get_logger
+
+        logger = get_logger()
 
         if ctx.status == "completed":
-            ctx.logger.log(
+            logger.log(
                 event="run.completed",
                 run_id=ctx.run_id,
                 total_iterations=ctx.budget.consumed_iterations,
@@ -87,7 +89,7 @@ class RunStatusLogging(Step):
                 elapsed_ms=round(ctx.elapsed_ms, 1),
             )
         elif ctx.status == "interrupted":
-            ctx.logger.log(
+            logger.log(
                 event="run.interrupted",
                 run_id=ctx.run_id,
                 completed_iterations=ctx.budget.consumed_iterations,
@@ -95,7 +97,7 @@ class RunStatusLogging(Step):
                 elapsed_ms=round(ctx.elapsed_ms, 1),
             )
         elif ctx.status == "exhausted":
-            ctx.logger.log(
+            logger.log(
                 event="run.exhausted",
                 run_id=ctx.run_id,
                 total_iterations=ctx.budget.consumed_iterations,
@@ -105,7 +107,7 @@ class RunStatusLogging(Step):
                 elapsed_ms=round(ctx.elapsed_ms, 1),
             )
         elif ctx.status == "error":
-            ctx.logger.log(
+            logger.log(
                 event="run.error",
                 run_id=ctx.run_id,
                 error_type=ctx.error_type,

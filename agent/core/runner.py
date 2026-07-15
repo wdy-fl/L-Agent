@@ -58,7 +58,6 @@ class AgentRunner:
             response = None
             async for item in ctx.client.stream(
                 ctx.current_model_request,
-                logger=ctx.logger,
                 run_id=ctx.run_id,
                 iteration=ctx.budget.consumed_iterations,
             ):

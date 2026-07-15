@@ -9,7 +9,6 @@ from agent.llm.client import ModelConfig, ModelRequest, ModelResponse
 if TYPE_CHECKING:
     from agent.cli.render import Renderer
     from agent.llm.client import OpenAICompatibleClient
-    from agent.logging.logger import AgentLogger
     from agent.timeline.store import TimelineStore
     from agent.tools.base import ToolCall, ToolResult
     from agent.tools.dispatcher import ToolDispatcher
@@ -77,9 +76,6 @@ class RunContext:
 
     # --- timeline store ---
     timeline_store: TimelineStore | None = None
-
-    # --- logging ---
-    logger: AgentLogger | None = None
 
     # --- infrastructure (set by CLILoop before build_runner) ---
     client: OpenAICompatibleClient | None = None

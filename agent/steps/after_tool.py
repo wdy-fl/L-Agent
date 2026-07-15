@@ -27,18 +27,20 @@ class ToolDoneLogging(Step):
             call_id_to_name[tc.call_id] = tc.tool_name
 
         elapsed_ms = (time.time() - ctx.tool_start_time) * 1000
-        if ctx.logger is not None:
-            for r in results:
-                if isinstance(r, ToolResult):
-                    tool_name = call_id_to_name.get(r.call_id, r.call_id)
-                    ctx.logger.log(
-                        event="tool.done",
-                        run_id=ctx.run_id,
-                        tool_name=tool_name,
-                        elapsed_ms=round(elapsed_ms, 1),
-                        status=r.status.value,
-                        result=r.content,
-                    )
+        from agent.logging import get_logger
+
+        logger = get_logger()
+        for r in results:
+            if isinstance(r, ToolResult):
+                tool_name = call_id_to_name.get(r.call_id, r.call_id)
+                logger.log(
+                    event="tool.done",
+                    run_id=ctx.run_id,
+                    tool_name=tool_name,
+                    elapsed_ms=round(elapsed_ms, 1),
+                    status=r.status.value,
+                    result=r.content,
+                )
 
 
 class ResultLimitGuard(Step):

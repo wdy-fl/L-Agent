@@ -25,14 +25,15 @@ class RunStart(Step):
         run = AgentRun(run_id=ctx.run_id, session_id=ctx.session_id, branch_id=ctx.branch_id, status=RunStatus.running)
         store.create_run(run)
         ctx.status = "running"
-        if ctx.logger:
-            ctx.logger.log(
-                event="run.start",
-                session_id=ctx.session_id,
-                branch_id=ctx.branch_id,
-                run_id=ctx.run_id,
-                input=ctx.input,
-            )
+        from agent.logging import get_logger
+
+        get_logger().log(
+            event="run.start",
+            session_id=ctx.session_id,
+            branch_id=ctx.branch_id,
+            run_id=ctx.run_id,
+            input=ctx.input,
+        )
         return
 
 
