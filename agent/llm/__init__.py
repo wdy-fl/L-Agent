@@ -1,12 +1,12 @@
-from agent.llm.client import (
+from agent.llm.base import (
     LLMClient,
     ModelConfig,
     ModelRequest,
     ModelResponse,
-    OpenAICompatibleClient,
     StreamDelta,
     Usage,
 )
+from agent.llm.client import OpenAICompatibleClient
 
 __all__ = [
     "LLMClient",
