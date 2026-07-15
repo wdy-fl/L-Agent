@@ -68,6 +68,11 @@ class RunContext:
     final_result: Any = None
     status: str = "running"
 
+    # --- error info (set by runner when status == "failed") ---
+    error_type: str = ""
+    error_message: str = ""
+    error_traceback: str = ""
+
     # --- timeline store ---
     timeline_store: TimelineStore | None = None
 

@@ -68,6 +68,55 @@ class CheckpointRecordRunTerminalState(Step):
         return
 
 
+class RunStatusLogging(Step):
+    """Log status-specific events based on ctx.status."""
+
+    def __init__(self) -> None:
+        super().__init__("run.status_logging", HookPhase.after_run)
+
+    async def run(self, ctx: RunContext) -> None:
+        if ctx.logger is None:
+            return
+
+        if ctx.status == "completed":
+            ctx.logger.log(
+                event="run.completed",
+                run_id=ctx.run_id,
+                total_iterations=ctx.budget.consumed_iterations,
+                total_tokens=ctx.budget.consumed_total_tokens,
+                elapsed_ms=round(ctx.elapsed_ms, 1),
+            )
+        elif ctx.status == "interrupted":
+            ctx.logger.log(
+                event="run.interrupted",
+                run_id=ctx.run_id,
+                completed_iterations=ctx.budget.consumed_iterations,
+                total_tokens=ctx.budget.consumed_total_tokens,
+                elapsed_ms=round(ctx.elapsed_ms, 1),
+            )
+        elif ctx.status == "exhausted":
+            ctx.logger.log(
+                event="run.exhausted",
+                run_id=ctx.run_id,
+                total_iterations=ctx.budget.consumed_iterations,
+                total_tokens=ctx.budget.consumed_total_tokens,
+                max_iterations=ctx.budget.max_iterations,
+                max_tokens=ctx.budget.max_tokens,
+                elapsed_ms=round(ctx.elapsed_ms, 1),
+            )
+        elif ctx.status == "failed":
+            ctx.logger.log(
+                event="run.failed",
+                run_id=ctx.run_id,
+                error_type=ctx.error_type,
+                error_message=ctx.error_message,
+                traceback=ctx.error_traceback,
+                completed_iterations=ctx.budget.consumed_iterations,
+                total_tokens=ctx.budget.consumed_total_tokens,
+                elapsed_ms=round(ctx.elapsed_ms, 1),
+            )
+
+
 class BranchUpdateResumeHead(Step):
     """Update branch.resume_head when run completes successfully."""
 

@@ -6,6 +6,7 @@ from agent.core.runner import AgentRunner
 from agent.steps.after_run import (
     RunFinish,
     RunMarkTerminalState,
+    RunStatusLogging,
     CheckpointRecordRunTerminalState,
     BranchUpdateResumeHead,
 )
@@ -69,6 +70,7 @@ def build_runner() -> AgentRunner:
     reg.register(ToolResultsRender())
 
     # ---- after_run ----
+    reg.register(RunStatusLogging())
     reg.register(RunMarkTerminalState())
     reg.register(CheckpointRecordRunTerminalState())
     reg.register(BranchUpdateResumeHead())

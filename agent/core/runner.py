@@ -31,16 +31,9 @@ class AgentRunner:
                 ctx.status = "completed"
         except Exception as exc:
             ctx.status = "failed"
-            if ctx.logger:
-                ctx.logger.log(
-                    event="run.error",
-                    run_id=ctx.run_id,
-                    error_type=type(exc).__name__,
-                    error_message=str(exc),
-                    traceback=traceback.format_exc(),
-                )
-            if ctx.render is not None:
-                ctx.render.show_error(exc)
+            ctx.error_type = type(exc).__name__
+            ctx.error_message = str(exc)
+            ctx.error_traceback = traceback.format_exc()
         finally:
             await self._run_phase(HookPhase.after_run, ctx)
 
