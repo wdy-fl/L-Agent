@@ -29,7 +29,6 @@ from agent.steps.before_run import (
 )
 from agent.steps.before_model import (
     BudgetGuard,
-    IterationCreate,
     ModelRequestCompose,
 )
 from agent.steps.before_tool import (
@@ -49,7 +48,6 @@ def build_runner() -> AgentRunner:
 
     # ---- before_model ----
     reg.register(BudgetGuard())
-    reg.register(IterationCreate())
     reg.register(ModelRequestCompose())
 
     # ---- after_model ----

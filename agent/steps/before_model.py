@@ -7,31 +7,20 @@ from agent.steps.base import Step
 
 
 class BudgetGuard(Step):
-    """Check budget limits before each model call; set exhausted if exceeded."""
+    """Increment iteration counter and check budget limits before each model call."""
 
     def __init__(self) -> None:
         super().__init__("budget.guard", HookPhase.before_model)
 
     async def run(self, ctx: RunContext) -> None:
         budget = ctx.budget
+        budget.consumed_iterations += 1
         if budget.consumed_iterations > budget.max_iterations:
             budget.exhausted = True
             return
         if budget.consumed_total_tokens >= budget.max_tokens:
             budget.exhausted = True
             return
-
-
-class IterationCreate(Step):
-    """Increment iteration counter in ctx.budget."""
-
-    def __init__(self) -> None:
-        super().__init__("iteration.create", HookPhase.before_model)
-
-    async def run(self, ctx: RunContext) -> None:
-        ctx.budget.consumed_iterations += 1
-
-        return
 
 
 class ModelRequestCompose(Step):
