@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from rich.console import Console
@@ -67,6 +68,7 @@ class CommandDispatcher:
             "/resume": self._cmd_resume,
             "/rewind": self._cmd_rewind,
             "/status": self._cmd_status,
+            "/title": self._cmd_title,
             "/help": self._cmd_help,
         }
 
@@ -206,11 +208,31 @@ class CommandDispatcher:
 
         self._console.print(table)
 
+    async def _cmd_title(self, arg: str, ctx: RunContext) -> None:
+        if not ctx.session_id:
+            self._console.print("[red]No active session.[/red]")
+            return
+
+        if not arg.strip():
+            self._console.print("[red]Usage: /title <new title>[/red]")
+            return
+
+        session = self._store.get_session(ctx.session_id)
+        if not session:
+            self._console.print("[red]Session not found.[/red]")
+            return
+
+        session.title = arg.strip()
+        session.updated_at = datetime.now(timezone.utc)
+        self._store.update_session(session)
+        self._console.print(f"[green]Session renamed to: {session.title}[/green]")
+
     async def _cmd_help(self, arg: str, ctx: RunContext) -> None:
         self._console.print("[bold]Available commands:[/bold]")
         self._console.print("  /new      Create a new session")
         self._console.print("  /list     List and select a session")
         self._console.print("  /resume   Resume a session by ID")
         self._console.print("  /rewind   Rewind to a checkpoint")
+        self._console.print("  /title    Rename current session")
         self._console.print("  /status   Show current session status")
         self._console.print("  /help     Show this help message")
