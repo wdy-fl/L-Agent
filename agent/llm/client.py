@@ -9,8 +9,6 @@ from typing import Any
 
 import httpx
 
-from agent.logging import get_logger
-
 
 @dataclass
 class ModelConfig:
@@ -66,6 +64,7 @@ class ModelResponse:
     tool_calls: list[dict] = field(default_factory=list)
     usage: Usage = field(default_factory=Usage)
     finish_reason: str = "stop"
+    elapsed_ms: float = 0.0
 
 
 class LLMClient(ABC):
@@ -78,10 +77,8 @@ class LLMClient(ABC):
     async def stream(
         self,
         request: ModelRequest,
-        run_id: str = "",
-        iteration: int = 0,
-    ) -> AsyncGenerator[str | ModelResponse, None]:
-        """Stream tokens, yielding str for deltas and ModelResponse as the final item."""
+    ) -> AsyncGenerator[StreamDelta | ModelResponse, None]:
+        """Stream tokens, yielding StreamDelta for deltas and ModelResponse as the final item."""
         ...
 
 
@@ -97,6 +94,7 @@ class OpenAICompatibleClient(LLMClient):
         self._max_tokens = config.max_tokens
 
     def call(self, request: ModelRequest) -> ModelResponse:
+        t0 = time.time()
         payload = self._build_payload(request)
         headers = self._headers()
 
@@ -108,22 +106,15 @@ class OpenAICompatibleClient(LLMClient):
             )
             resp.raise_for_status()
 
-        return self._parse_response(resp.json())
+        response = self._parse_response(resp.json())
+        response.elapsed_ms = round((time.time() - t0) * 1000, 1)
+        return response
 
     async def stream(
         self,
         request: ModelRequest,
-        run_id: str = "",
-        iteration: int = 0,
     ) -> AsyncGenerator[StreamDelta | ModelResponse, None]:
         t0 = time.time()
-        get_logger().log(
-            event="model.start",
-            run_id=run_id,
-            iteration=iteration,
-            messages_count=len(request.messages),
-            tools_count=len(request.tools),
-        )
 
         payload = self._build_payload(request)
         payload["stream"] = True
@@ -196,23 +187,7 @@ class OpenAICompatibleClient(LLMClient):
             finish_reason=finish_reason,
         )
 
-        elapsed_ms = (time.time() - t0) * 1000
-        get_logger().log(
-            event="model.done",
-            run_id=run_id,
-            iteration=iteration,
-            elapsed_ms=round(elapsed_ms, 1),
-            tokens_in=response.usage.input_tokens,
-            tokens_out=response.usage.output_tokens,
-            finish_reason=response.finish_reason,
-            content=response.content,
-            reasoning_content=response.reasoning_content,
-            tool_calls=[
-                {"id": tc["id"], "name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}
-                for tc in response.tool_calls
-            ],
-        )
-
+        response.elapsed_ms = round((time.time() - t0) * 1000, 1)
         yield response
 
     def _headers(self) -> dict[str, str]:

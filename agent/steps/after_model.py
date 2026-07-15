@@ -5,8 +5,42 @@ import uuid
 from agent.core.context import RunContext
 from agent.core.lifecycle import HookPhase
 from agent.llm.client import ModelResponse
+from agent.logging import get_logger
 from agent.steps.base import Step
 from agent.timeline.models import Message
+
+
+class UsageUpdate(Step):
+    """Accumulate token consumption into ctx.budget and log model.done event."""
+
+    def __init__(self) -> None:
+        super().__init__("usage.update", HookPhase.after_model)
+
+    async def run(self, ctx: RunContext) -> None:
+        resp = ctx.current_model_response
+        if resp is None or not isinstance(resp, ModelResponse):
+            return
+        budget = ctx.budget
+        budget.consumed_iterations += 1
+        budget.consumed_input_tokens += resp.usage.input_tokens
+        budget.consumed_output_tokens += resp.usage.output_tokens
+
+        get_logger().log(
+            event="model.done",
+            run_id=ctx.run_id,
+            iteration=budget.consumed_iterations,
+            elapsed_ms=resp.elapsed_ms,
+            tokens_in=resp.usage.input_tokens,
+            tokens_out=resp.usage.output_tokens,
+            finish_reason=resp.finish_reason,
+            content=resp.content,
+            reasoning_content=resp.reasoning_content,
+            tool_calls=[
+                {"id": tc["id"], "name": tc["function"]["name"], "arguments": tc["function"]["arguments"]}
+                for tc in resp.tool_calls
+            ],
+        )
+        return
 
 
 class MessageCommitAssistant(Step):
@@ -41,21 +75,6 @@ class MessageCommitAssistant(Step):
             tool_calls=tool_calls_data,
         )
         store.append_message(msg)
-        return
-
-
-class UsageUpdate(Step):
-    """Accumulate token consumption into ctx.budget."""
-
-    def __init__(self) -> None:
-        super().__init__("usage.update", HookPhase.after_model)
-
-    async def run(self, ctx: RunContext) -> None:
-        resp = ctx.current_model_response
-        if resp is None or not isinstance(resp, ModelResponse):
-            return
-        ctx.budget.consumed_input_tokens += resp.usage.input_tokens
-        ctx.budget.consumed_output_tokens += resp.usage.output_tokens
         return
 
 

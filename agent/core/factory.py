@@ -51,8 +51,8 @@ def build_runner() -> AgentRunner:
     reg.register(ModelRequestCompose())
 
     # ---- after_model ----
-    reg.register(MessageCommitAssistant())
     reg.register(UsageUpdate())
+    reg.register(MessageCommitAssistant())
     reg.register(ResultDetectRouting())
 
     # ---- before_tool ----

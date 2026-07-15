@@ -41,26 +41,14 @@ class AgentRunner:
         renderer = ctx.renderer
 
         while True:
-            # 快速退出：上一轮已中断或预算已耗尽，跳过所有后续步骤。
-            if ctx.interrupted or ctx.budget.exhausted:
-                break
 
             await self._run_phase(HookPhase.before_model, ctx)
 
-            # 再次检查：BudgetGuard 可能刚设置了 exhausted。
             if ctx.interrupted or ctx.budget.exhausted:
                 break
 
-            # --- model call ---
-            if ctx.current_model_request is None:
-                raise RuntimeError("model_request not set before model call")
-
             response = None
-            async for item in ctx.client.stream(
-                ctx.current_model_request,
-                run_id=ctx.run_id,
-                iteration=ctx.budget.consumed_iterations,
-            ):
+            async for item in ctx.client.stream(ctx.current_model_request):
                 if isinstance(item, StreamDelta):
                     if item.kind == "reasoning":
                         renderer.stream_reasoning(item.text)
