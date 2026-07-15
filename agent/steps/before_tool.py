@@ -141,10 +141,10 @@ class ToolExecutionStart(Step):
             return
 
         # Show spinner for each tool call
-        render = ctx.render
+        renderer = ctx.renderer
         for call in calls:
-            if render is not None:
-                render.show_tool_spinner(call.tool_name)
+            if renderer is not None:
+                renderer.show_tool_spinner(call.tool_name)
 
         # Record checkpoint: tool_call started
         store = ctx.timeline_store

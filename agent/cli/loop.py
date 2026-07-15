@@ -35,7 +35,7 @@ class CLILoop:
         self._store = SQLiteTimelineStore(db_path)
 
         self._console = Console()
-        self._render = Renderer(self._console)
+        self._renderer = Renderer(self._console)
 
         auto_approve = set(settings.approval.auto_approve) | AUTO_APPROVE_TOOLS
         always_confirm = set(settings.approval.always_confirm) | ALWAYS_CONFIRM_TOOLS
@@ -79,7 +79,7 @@ class CLILoop:
         self._ctx.dispatcher = ToolDispatcher(tool_registry)
 
         # Inject UI callbacks so the runner can drive rendering & approval directly.
-        self._ctx.render = self._render
+        self._ctx.renderer = self._renderer
         self._ctx.request_approval = self._approval.prompt
 
         self._runner = build_runner()
@@ -130,11 +130,11 @@ class CLILoop:
         await self._runner.run(self._ctx)
 
         if self._ctx.status == "interrupted":
-            self._render.show_interrupted()
+            self._renderer.show_interrupted()
         elif self._ctx.status == "failed":
-            self._render.show_run_failed()
+            self._renderer.show_run_failed()
         elif self._ctx.status in ("completed", "exhausted"):
-            self._render.show_status(
+            self._renderer.show_status(
                 self._ctx.budget.consumed_iterations,
                 self._ctx.budget.consumed_total_tokens,
                 self._ctx.elapsed_ms

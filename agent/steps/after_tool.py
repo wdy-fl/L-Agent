@@ -61,20 +61,20 @@ class ResultLimitGuard(Step):
 
 
 class ToolResultsRender(Step):
-    """Render tool results via ctx.render.finish_tool()."""
+    """Render tool results via ctx.renderer.finish_tool()."""
 
     def __init__(self) -> None:
         super().__init__("tools.render", HookPhase.after_tool)
 
     async def run(self, ctx: RunContext) -> None:
-        render = ctx.render
-        if render is None:
+        renderer = ctx.renderer
+        if renderer is None:
             return
 
         results = ctx.current_tool_results
         if isinstance(results, list):
             for result in results:
-                render.finish_tool(
+                renderer.finish_tool(
                     getattr(result, "call_id", ""),
                     getattr(result, "content", str(result)),
                 )

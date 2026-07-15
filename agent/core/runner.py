@@ -38,7 +38,7 @@ class AgentRunner:
             await self._run_phase(HookPhase.after_run, ctx)
 
     async def _react_loop(self, ctx: RunContext) -> None:
-        render = ctx.render
+        renderer = ctx.renderer
 
         while True:
             # 快速退出：上一轮已中断或预算已耗尽，跳过所有后续步骤。
@@ -63,8 +63,8 @@ class AgentRunner:
                 iteration=ctx.budget.consumed_iterations,
             ):
                 if isinstance(item, str):
-                    if render is not None:
-                        render.stream_text(item)
+                    if renderer is not None:
+                        renderer.stream_text(item)
                 elif isinstance(item, ModelResponse):
                     response = item
             if response is None:
@@ -72,9 +72,9 @@ class AgentRunner:
             ctx.current_model_response = response
             self._record_checkpoint(ActionName.model_call, "completed", ctx)
 
-            if render is not None:
-                render.finish_stream()
-                render.show_reasoning(getattr(response, "reasoning_content", ""))
+            if renderer is not None:
+                renderer.finish_stream()
+                renderer.show_reasoning(getattr(response, "reasoning_content", ""))
 
             await self._run_phase(HookPhase.after_model, ctx)
 

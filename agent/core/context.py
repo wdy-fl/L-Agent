@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from agent.llm.client import ModelConfig, ModelRequest, ModelResponse
 
 if TYPE_CHECKING:
+    from agent.cli.render import Renderer
     from agent.llm.client import OpenAICompatibleClient
     from agent.logging.logger import AgentLogger
     from agent.timeline.store import TimelineStore
@@ -84,5 +85,5 @@ class RunContext:
     dispatcher: ToolDispatcher | None = None
 
     # --- ui callbacks (set by CLILoop so runner can drive rendering & approval directly) ---
-    render: Any = None
+    renderer: Renderer | None = None
     request_approval: Callable[[str, dict[str, Any], str], Awaitable[bool]] | None = None
