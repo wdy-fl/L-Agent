@@ -129,11 +129,15 @@ class CLILoop:
 
         await self._runner.run(self._ctx)
 
-        if self._ctx.interrupted:
+        if self._ctx.status == "interrupted":
             self._render.show_interrupted()
-        elif self._ctx.status == "completed":
+        elif self._ctx.status == "failed":
+            self._render.show_run_failed()
+        elif self._ctx.status in ("completed", "exhausted"):
             self._render.show_status(
-                self._ctx.budget.consumed_iterations, 
-                self._ctx.budget.consumed_total_tokens, 
+                self._ctx.budget.consumed_iterations,
+                self._ctx.budget.consumed_total_tokens,
                 self._ctx.elapsed_ms
             )
+            if self._ctx.status == "exhausted":
+                self._console.print("[dim]  Budget exhausted — run stopped.[/dim]")

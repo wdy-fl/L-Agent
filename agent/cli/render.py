@@ -79,3 +79,6 @@ class Renderer:
 
     def show_interrupted(self) -> None:
         self._console.print("[yellow]⚡ Run interrupted[/yellow]")
+
+    def show_run_failed(self) -> None:
+        self._console.print("[red]✗ Run failed[/red]")

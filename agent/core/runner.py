@@ -48,8 +48,13 @@ class AgentRunner:
         render = ctx.render
 
         while True:
+            # 快速退出：上一轮已中断或预算已耗尽，跳过所有后续步骤。
+            if ctx.interrupted or ctx.budget.exhausted:
+                break
+
             await self._run_phase(HookPhase.before_model, ctx)
 
+            # 再次检查：BudgetGuard 可能刚设置了 exhausted。
             if ctx.interrupted or ctx.budget.exhausted:
                 break
 
