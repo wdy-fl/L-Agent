@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-import time
+
 import uuid
 from typing import Any
 
@@ -159,9 +159,6 @@ class ToolExecutionStart(Step):
                 message_cursor=cursor,
             )
             store.create_checkpoint(cp)
-
-        # Record start timestamp for elapsed-time calculation in _execute_tool
-        ctx.tool_start_time = time.time()
 
         # Log tool.start events
         from agent.logging import get_logger

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 import uuid
 
 from agent.core.context import RunContext
@@ -26,7 +25,6 @@ class ToolDoneLogging(Step):
         for tc in ctx.current_tool_calls or []:
             call_id_to_name[tc.call_id] = tc.tool_name
 
-        elapsed_ms = (time.time() - ctx.tool_start_time) * 1000
         from agent.logging import get_logger
 
         logger = get_logger()
@@ -37,7 +35,6 @@ class ToolDoneLogging(Step):
                     event="tool.done",
                     run_id=ctx.run_id,
                     tool_name=tool_name,
-                    elapsed_ms=round(elapsed_ms, 1),
                     status=r.status.value,
                     result=r.content,
                 )
