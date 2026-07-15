@@ -126,9 +126,11 @@ class CLILoop:
 
         await self._runner.run(self._ctx)
 
-        total_tokens = self._ctx.budget.consumed_total_tokens
-
         if self._ctx.interrupted:
             self._render.show_interrupted()
         elif self._ctx.status == "completed":
-            self._render.show_status(self._ctx.budget.consumed_iterations, total_tokens, self._ctx.elapsed_ms)
+            self._render.show_status(
+                self._ctx.budget.consumed_iterations, 
+                self._ctx.budget.consumed_total_tokens, 
+                self._ctx.elapsed_ms
+            )
