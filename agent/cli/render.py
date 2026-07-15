@@ -17,35 +17,57 @@ class Renderer:
         self._console = console or Console()
         self._stream_buffer: str = ""
         self._live: Live | None = None
+        self._reasoning_buffer: str = ""
+        self._reasoning_live: Live | None = None
+        self._reasoning_streamed: bool = False
 
     def stream_text(self, text: str) -> None:
+        # First content chunk → finalise the reasoning phase so the thinking
+        # panel is printed before the answer starts streaming.
+        if self._reasoning_live is not None or self._reasoning_buffer:
+            self._finalize_reasoning()
         self._stream_buffer += text
         if self._live is None:
             self._live = Live(console=self._console, refresh_per_second=10)
             self._live.start()
         self._live.update(Markdown(self._stream_buffer))
 
+    def stream_reasoning(self, text: str) -> None:
+        """Stream reasoning content in real-time with dim italic styling.
+
+        Reasoning models (GLM-5.2, DeepSeek-R1) emit their chain-of-thought
+        *before* the final answer.  This method renders that thinking process
+        as it arrives so the user can watch the model reason.
+        """
+        self._reasoning_buffer += text
+        self._reasoning_streamed = True
+        if self._reasoning_live is None:
+            self._reasoning_live = Live(console=self._console, refresh_per_second=10)
+            self._reasoning_live.start()
+        self._reasoning_live.update(Text(self._reasoning_buffer, style="dim italic"))
+
+    def _finalize_reasoning(self) -> None:
+        """Stop the reasoning Live region and print the final collapsed panel."""
+        if self._reasoning_live is not None:
+            self._reasoning_live.stop()
+            self._reasoning_live = None
+        if self._reasoning_buffer.strip():
+            self._console.print(Panel(
+                Text(self._reasoning_buffer, style="dim italic"),
+                title="💭 Thinking",
+                border_style="dim",
+                expand=False,
+            ))
+        self._reasoning_buffer = ""
+
     def finish_stream(self) -> None:
+        self._finalize_reasoning()
         if self._live is not None:
             self._live.update(Markdown(self._stream_buffer))
             self._live.stop()
             self._live = None
         self._stream_buffer = ""
 
-    def show_reasoning(self, text: str) -> None:
-        """Display the model's reasoning chain (dim panel, after the answer).
-
-        For reasoning models like GLM-5.2 this also carries the web_search
-        citation references, so it doubles as a source-transparency view.
-        """
-        if not text or not text.strip():
-            return
-        self._console.print(Panel(
-            text,
-            title="[dim]reasoning[/dim]",
-            border_style="dim",
-            expand=False,
-        ))
 
     def show_tool_spinner(self, tool_name: str) -> None:
         self._console.print(

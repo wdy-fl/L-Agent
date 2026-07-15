@@ -4,6 +4,7 @@ from agent.llm.client import (
     ModelRequest,
     ModelResponse,
     OpenAICompatibleClient,
+    StreamDelta,
     Usage,
 )
 
@@ -14,5 +15,6 @@ __all__ = [
     "ModelConfig",
     "ModelRequest",
     "ModelResponse",
+    "StreamDelta",
     "Usage",
 ]

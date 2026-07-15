@@ -4,7 +4,7 @@ import traceback
 import uuid
 from agent.core.context import RunContext
 from agent.core.lifecycle import ActionName, HookPhase
-from agent.llm.client import ModelResponse
+from agent.llm.client import ModelResponse, StreamDelta
 from agent.steps.registry import StepRegistry
 from agent.timeline.models import Checkpoint, CheckpointType
 
@@ -62,19 +62,18 @@ class AgentRunner:
                 run_id=ctx.run_id,
                 iteration=ctx.budget.consumed_iterations,
             ):
-                if isinstance(item, str):
-                    if renderer is not None:
-                        renderer.stream_text(item)
+                if isinstance(item, StreamDelta):
+                    if item.kind == "reasoning":
+                        renderer.stream_reasoning(item.text)
+                    elif item.kind == "content":
+                        renderer.stream_text(item.text)
                 elif isinstance(item, ModelResponse):
                     response = item
+                    renderer.finish_stream()
             if response is None:
                 raise RuntimeError("stream ended without ModelResponse")
             ctx.current_model_response = response
             self._record_checkpoint(ActionName.model_call, "completed", ctx)
-
-            if renderer is not None:
-                renderer.finish_stream()
-                renderer.show_reasoning(getattr(response, "reasoning_content", ""))
 
             await self._run_phase(HookPhase.after_model, ctx)
 

@@ -43,6 +43,18 @@ class Usage:
 
 
 @dataclass
+class StreamDelta:
+    """A single streaming delta yielded during LLM streaming.
+
+    Carries a ``kind`` discriminator so consumers can route reasoning vs.
+    content deltas to different render paths.
+    """
+
+    kind: str  # "reasoning" | "content"
+    text: str
+
+
+@dataclass
 class ModelResponse:
     """Response from an LLM call."""
 
@@ -60,6 +72,7 @@ class LLMClient(ABC):
     @abstractmethod
     def call(self, request: ModelRequest) -> ModelResponse: ...
 
+    @abstractmethod
     async def stream(
         self,
         request: ModelRequest,
@@ -68,7 +81,7 @@ class LLMClient(ABC):
         iteration: int = 0,
     ) -> AsyncGenerator[str | ModelResponse, None]:
         """Stream tokens, yielding str for deltas and ModelResponse as the final item."""
-        yield self.call(request)
+        ...
 
 
 class OpenAICompatibleClient(LLMClient):
@@ -102,7 +115,7 @@ class OpenAICompatibleClient(LLMClient):
         logger: Any = None,
         run_id: str = "",
         iteration: int = 0,
-    ) -> AsyncGenerator[str | ModelResponse, None]:
+    ) -> AsyncGenerator[StreamDelta | ModelResponse, None]:
         t0 = time.time()
         if logger is not None:
             logger.log(
@@ -141,12 +154,12 @@ class OpenAICompatibleClient(LLMClient):
 
                     if text := delta.get("content"):
                         content_parts.append(text)
-                        yield text
+                        yield StreamDelta(kind="content", text=text)
 
-                    # 推理模型的思维链（不实时吐给前端，仅在最终响应里带回）。
-                    # TODO
+                    # 推理模型的思维链 — 实时流式输出（dim italic），内容先于答案。
                     if rc := delta.get("reasoning_content"):
                         reasoning_parts.append(rc)
+                        yield StreamDelta(kind="reasoning", text=rc)
 
                     if tc_list := delta.get("tool_calls"):
                         for tc in tc_list:
