@@ -41,7 +41,34 @@ class OpenAICompatibleClient(LLMClient):
             )
             resp.raise_for_status()
 
-        response = self._parse_response(resp.json())
+        data = resp.json()
+        choice = data["choices"][0]
+        message = choice["message"]
+
+        content = message.get("content") or ""
+        reasoning_content = message.get("reasoning_content") or ""
+
+        tool_calls: list[dict] = []
+        if raw_calls := message.get("tool_calls"):
+            tool_calls = [
+                {
+                    "id": tc.get("id", ""),
+                    "type": tc.get("type", "function"),
+                    "function": {
+                        "name": tc["function"]["name"],
+                        "arguments": tc["function"].get("arguments", ""),
+                    },
+                }
+                for tc in raw_calls
+            ]
+
+        response = self._assemble_response(
+            content=content,
+            reasoning_content=reasoning_content,
+            tool_calls=tool_calls,
+            usage_data=data.get("usage", {}),
+            finish_reason=choice.get("finish_reason", "stop"),
+        )
         response.elapsed_ms = round((time.time() - t0) * 1000, 1)
         return response
 
@@ -155,33 +182,4 @@ class OpenAICompatibleClient(LLMClient):
             tool_calls=tool_calls,
             usage=usage,
             finish_reason=finish_reason,
-        )
-
-    def _parse_response(self, data: dict[str, Any]) -> ModelResponse:
-        choice = data["choices"][0]
-        message = choice["message"]
-
-        content = message.get("content") or ""
-        reasoning_content = message.get("reasoning_content") or ""
-
-        tool_calls: list[dict] = []
-        if raw_calls := message.get("tool_calls"):
-            tool_calls = [
-                {
-                    "id": tc.get("id", ""),
-                    "type": tc.get("type", "function"),
-                    "function": {
-                        "name": tc["function"]["name"],
-                        "arguments": tc["function"].get("arguments", ""),
-                    },
-                }
-                for tc in raw_calls
-            ]
-
-        return self._assemble_response(
-            content=content,
-            reasoning_content=reasoning_content,
-            tool_calls=tool_calls,
-            usage_data=data.get("usage", {}),
-            finish_reason=choice.get("finish_reason", "stop"),
         )
