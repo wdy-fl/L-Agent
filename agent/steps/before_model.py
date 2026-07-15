@@ -7,7 +7,7 @@ from agent.steps.base import Step
 
 
 class BudgetGuard(Step):
-    """Check budget limits before each model call; set exhausted/interrupted if exceeded."""
+    """Check budget limits before each model call; set exhausted if exceeded."""
 
     def __init__(self) -> None:
         super().__init__("budget.guard", HookPhase.before_model)
@@ -16,11 +16,9 @@ class BudgetGuard(Step):
         budget = ctx.budget
         if budget.consumed_iterations > budget.max_iterations:
             budget.exhausted = True
-            ctx.interrupted = True
             return
         if budget.consumed_total_tokens >= budget.max_tokens:
             budget.exhausted = True
-            ctx.interrupted = True
             return
 
 

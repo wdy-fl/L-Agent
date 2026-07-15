@@ -25,6 +25,8 @@ class AgentRunner:
             await self._react_loop(ctx)
             if ctx.interrupted:
                 ctx.status = "interrupted"
+            elif ctx.budget.exhausted:
+                ctx.status = "exhausted"
             else:
                 ctx.status = "completed"
         except Exception as exc:
