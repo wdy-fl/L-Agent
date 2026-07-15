@@ -62,6 +62,10 @@ class Renderer:
         self._reasoning_buffer = ""
 
     def finish_stream(self) -> None:
+        # 收口 reasoning：覆盖「reasoning → tool_call（无文本内容）」分支。
+        # 该分支下 stream_text() 不会被触发，_reasoning_live 持续活跃，会在
+        # 后续工具审批/结果面板渲染时造成 Live region 穿插重叠。
+        self._finalize_reasoning()
         if self._live is not None:
             self._live.update(Markdown(self._stream_buffer))
             self._live.stop()

@@ -84,3 +84,36 @@ class RunContext:
     # --- ui callbacks (set by CLILoop so runner can drive rendering & approval directly) ---
     renderer: Renderer | None = None
     request_approval: Callable[[str, dict[str, Any], str], Awaitable[bool]] | None = None
+
+    def reset_for_run(self) -> None:
+        """Reset all per-run fields to a clean state for a new agent run.
+
+        Called at the start of every ``_handle_run`` so a prior run's state
+        can't leak into the next one. Cross-run state is preserved: session/
+        branch identity, message history, model config, tool registry, and
+        UI/infrastructure callbacks. Budget counters are zeroed while keeping
+        the configured ``max_iterations`` / ``max_tokens`` limits.
+        """
+        # run identity & timing (re-set by RunStart; cleared so a prior run's
+        # values can't leak if a run ends before they're reassigned)
+        self.run_id = ""
+        self.started_at = 0.0
+        self.elapsed_ms = 0.0
+        self.interrupted = False
+        self.status = "running"
+        # per-iteration model/tool scratch
+        self.current_model_request = None
+        self.current_model_response = None
+        self.current_tool_calls = None
+        self.current_tool_results = None
+        self.has_tool_calls = False
+        self.final_result = None
+        # error info from a previous failed run
+        self.error_type = ""
+        self.error_message = ""
+        self.error_traceback = ""
+        # budget: fresh counter, preserve configured limits
+        self.budget = BudgetState(
+            max_iterations=self.budget.max_iterations,
+            max_tokens=self.budget.max_tokens,
+        )

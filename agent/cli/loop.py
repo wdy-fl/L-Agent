@@ -118,7 +118,7 @@ class CLILoop:
 
     async def _handle_run(self, user_input: str) -> None:
         """Execute an agent run (rendering & approval driven through ctx callbacks)."""
-        self._ctx.interrupted = False
+        self._ctx.reset_for_run()
         self._ctx.input = user_input
 
         await self._runner.run(self._ctx)

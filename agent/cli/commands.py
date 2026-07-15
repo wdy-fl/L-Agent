@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 from agent.cli.select import select_prompt
-from agent.core.context import BudgetState, RunContext
+from agent.core.context import RunContext
 from agent.storage.sqlite import SQLiteTimelineStore
 from agent.timeline.models import Branch, CheckpointType, Message, Session
 from agent.timeline.resume import ResumeResult, resume
@@ -90,11 +90,6 @@ class CommandDispatcher:
             msgs = self._store.get_messages_by_branch(existing.active_branch_id)
             ctx.messages = [_message_to_dict(m) for m in msgs]
 
-            ctx.budget = BudgetState(
-                max_iterations=ctx.budget.max_iterations,
-                max_tokens=ctx.budget.max_tokens,
-            )
-
             self._console.print(
                 f"[green]Reusing empty session {existing.session_id[:8]}...[/green]"
             )
@@ -130,11 +125,6 @@ class CommandDispatcher:
             )
         )
 
-        ctx.budget = BudgetState(
-            max_iterations=ctx.budget.max_iterations,
-            max_tokens=ctx.budget.max_tokens,
-        )
-
         self._console.print("[green]New session created.[/green]")
 
     async def _cmd_list(self, arg: str, ctx: RunContext) -> None:
@@ -162,10 +152,6 @@ class CommandDispatcher:
         ctx.session_id = selected_session_id
         ctx.branch_id = result.branch_id
         ctx.messages = [_message_to_dict(m) for m in result.messages]
-        ctx.budget = BudgetState(
-            max_iterations=ctx.budget.max_iterations,
-            max_tokens=ctx.budget.max_tokens,
-        )
 
         if ctx.renderer:
             ctx.renderer.replay_history(result.messages)
@@ -180,10 +166,6 @@ class CommandDispatcher:
             ctx.session_id = arg
             ctx.branch_id = result.branch_id
             ctx.messages = [_message_to_dict(m) for m in result.messages]
-            ctx.budget = BudgetState(
-                max_iterations=ctx.budget.max_iterations,
-                max_tokens=ctx.budget.max_tokens,
-            )
 
             if ctx.renderer:
                 ctx.renderer.replay_history(result.messages)
@@ -214,10 +196,6 @@ class CommandDispatcher:
 
         ctx.branch_id = result.new_branch_id
         ctx.messages = [_message_to_dict(m) for m in result.messages]
-        ctx.budget = BudgetState(
-            max_iterations=ctx.budget.max_iterations,
-            max_tokens=ctx.budget.max_tokens,
-        )
 
         self._console.print(f"[green]Rewound. New branch: {result.new_branch_id[:8]}...[/green]")
 
