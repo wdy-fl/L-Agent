@@ -17,6 +17,6 @@ class Step(ABC):
         self.phase = phase
 
     @abstractmethod
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         """Execute the step."""
         ...

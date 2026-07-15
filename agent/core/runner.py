@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 import traceback
 import uuid
 from agent.core.context import RunContext
@@ -8,7 +7,6 @@ from agent.core.lifecycle import ActionName, HookPhase
 from agent.llm.client import ModelResponse
 from agent.steps.registry import StepRegistry
 from agent.timeline.models import Checkpoint, CheckpointType
-from agent.tools.base import ToolCall, ToolResult, ToolResultStatus
 
 
 class AgentRunner:
@@ -23,7 +21,7 @@ class AgentRunner:
 
     async def run(self, ctx: RunContext) -> None:
         try:
-            self._run_phase(HookPhase.before_agent, ctx)
+            await self._run_phase(HookPhase.before_agent, ctx)
             await self._react_loop(ctx)
             if ctx.interrupted:
                 ctx.status = "interrupted"
@@ -42,13 +40,13 @@ class AgentRunner:
             if ctx.render is not None:
                 ctx.render.show_error(exc)
         finally:
-            self._run_phase(HookPhase.after_agent, ctx)
+            await self._run_phase(HookPhase.after_agent, ctx)
 
     async def _react_loop(self, ctx: RunContext) -> None:
         render = ctx.render
 
         while True:
-            self._run_phase(HookPhase.before_model, ctx)
+            await self._run_phase(HookPhase.before_model, ctx)
 
             if ctx.interrupted or ctx.budget.exhausted:
                 break
@@ -78,118 +76,45 @@ class AgentRunner:
                 render.finish_stream()
                 render.show_reasoning(getattr(response, "reasoning_content", ""))
 
-            self._run_phase(HookPhase.after_model, ctx)
+            await self._run_phase(HookPhase.after_model, ctx)
 
             if ctx.has_tool_calls:
-                self._run_phase(HookPhase.before_tool, ctx)
+                await self._run_phase(HookPhase.before_tool, ctx)
 
                 await self._execute_tool(ctx)
 
-                self._run_phase(HookPhase.after_tool, ctx)
+                await self._run_phase(HookPhase.after_tool, ctx)
                 ctx.has_tool_calls = False
             else:
                 break
 
     async def _execute_tool(self, ctx: RunContext) -> None:
-        """Run the tool-call phase: approval, execution, and rendering."""
-        render = ctx.render
+        """Run the tool-call phase: dispatch only.
+
+        Approval, spinner, tool.start, and checkpoint (started) are handled by
+        before_tool steps (ToolsApproval, ToolExecutionStart).
+
+        Audit logging, result truncation, completed checkpoint, and rendering
+        are handled by after_tool steps (ToolDoneLogging, ResultLimitGuard,
+        ToolResultsRender).
+        """
         calls = ctx.current_tool_calls
 
-        if calls and ctx.always_confirm_tools:
-            approved_calls: list[ToolCall] = []
-            for call in calls:
-                if call.error:
-                    approved_calls.append(call)
-                    continue
-                if call.tool_name not in ctx.always_confirm_tools:
-                    approved_calls.append(call)
-                    continue
-                risk_level = "high" if call.tool_name in ("terminal",) else "medium"
-                if ctx.request_approval is not None:
-                    approved = await ctx.request_approval(
-                        call.tool_name, call.arguments, risk_level
-                    )
-                else:
-                    approved = False
-                if approved:
-                    approved_calls.append(call)
-                else:
-                    result = ToolResult(
-                        call_id=call.call_id,
-                        status=ToolResultStatus.denied,
-                        content=f"Tool '{call.tool_name}' was denied by user.",
-                    )
-                    if ctx.current_tool_results is None:
-                        ctx.current_tool_results = []
-                    ctx.current_tool_results.append(result)
-            ctx.current_tool_calls = approved_calls
-            calls = approved_calls
-
-        for call in ctx.current_tool_calls or []:
-            if render is not None:
-                render.show_tool_spinner(call.tool_name)
-
         should_execute = calls is None or bool(calls)
-        if should_execute:
-            self._record_checkpoint(ActionName.tool_call, "started", ctx)
+        if not should_execute:
+            return
 
-            # --- AuditRecord start (inlined from middleware) ---
-            t0 = time.time()
-            call_id_to_name: dict[str, str] = {}
-            if ctx.logger is not None and calls:
-                for tc in calls:
-                    call_id_to_name[tc.call_id] = tc.tool_name
-                    ctx.logger.log(
-                        event="tool.start",
-                        run_id=ctx.run_id,
-                        tool_name=tc.tool_name,
-                        arguments=tc.arguments,
-                    )
+        try:
+            results = ctx.dispatcher.dispatch(ctx.current_tool_calls or [])
+            ctx.current_tool_results = results
+            self._record_checkpoint(ActionName.tool_call, "completed", ctx)
+        except Exception:
+            self._record_checkpoint(ActionName.tool_call, "failed", ctx)
+            raise
 
-            try:
-                results = ctx.dispatcher.dispatch(ctx.current_tool_calls or [])
-                ctx.current_tool_results = results
-
-                # --- AuditRecord end (inlined from middleware) ---
-                elapsed_ms = (time.time() - t0) * 1000
-                if ctx.logger is not None and isinstance(results, list):
-                    for r in results:
-                        if isinstance(r, ToolResult):
-                            tool_name = call_id_to_name.get(r.call_id, r.call_id)
-                            ctx.logger.log(
-                                event="tool.done",
-                                run_id=ctx.run_id,
-                                tool_name=tool_name,
-                                elapsed_ms=round(elapsed_ms, 1),
-                                status=r.status.value,
-                                result=r.content,
-                            )
-
-                # --- ResultLimitGuard (inlined from middleware) ---
-                if isinstance(results, list):
-                    for result in results:
-                        if isinstance(result, ToolResult) and len(result.content) > 50_000:
-                            result.content = (
-                                result.content[:50_000]
-                                + f"\n\n[Truncated: result exceeded 50_000 characters]"
-                            )
-
-                self._record_checkpoint(ActionName.tool_call, "completed", ctx)
-            except Exception:
-                self._record_checkpoint(ActionName.tool_call, "failed", ctx)
-                raise
-
-        results = ctx.current_tool_results
-        if isinstance(results, list):
-            for result in results:
-                if render is not None:
-                    render.finish_tool(
-                        getattr(result, "call_id", ""), getattr(result, "content", str(result))
-                    )
-
-    def _run_phase(self, phase: HookPhase, ctx: RunContext) -> None:
+    async def _run_phase(self, phase: HookPhase, ctx: RunContext) -> None:
         for step in self._registry.get_steps(phase):
-            step.run(ctx)
+            await step.run(ctx)
 
     def _record_checkpoint(self, action: ActionName, status: str, ctx: RunContext) -> None:
         store = ctx.timeline_store

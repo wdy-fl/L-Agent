@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import uuid
 
 from agent.core.context import RunContext
@@ -9,13 +10,83 @@ from agent.timeline.models import Checkpoint, CheckpointType, Message
 from agent.tools.base import ToolResult, ToolResultStatus
 
 
+class ToolDoneLogging(Step):
+    """Log tool.done events with elapsed time for each tool result."""
+
+    def __init__(self) -> None:
+        super().__init__("tools.done_logging", HookPhase.after_tool)
+
+    async def run(self, ctx: RunContext) -> None:
+        results = ctx.current_tool_results
+        if not results or not isinstance(results, list):
+            return
+
+        # Build call_id→tool_name lookup from the (possibly filtered) tool calls
+        call_id_to_name: dict[str, str] = {}
+        for tc in ctx.current_tool_calls or []:
+            call_id_to_name[tc.call_id] = tc.tool_name
+
+        elapsed_ms = (time.time() - ctx.tool_start_time) * 1000
+        if ctx.logger is not None:
+            for r in results:
+                if isinstance(r, ToolResult):
+                    tool_name = call_id_to_name.get(r.call_id, r.call_id)
+                    ctx.logger.log(
+                        event="tool.done",
+                        run_id=ctx.run_id,
+                        tool_name=tool_name,
+                        elapsed_ms=round(elapsed_ms, 1),
+                        status=r.status.value,
+                        result=r.content,
+                    )
+
+
+class ResultLimitGuard(Step):
+    """Truncate tool results that exceed 50,000 characters."""
+
+    def __init__(self) -> None:
+        super().__init__("result.limit_guard", HookPhase.after_tool)
+
+    async def run(self, ctx: RunContext) -> None:
+        results = ctx.current_tool_results
+        if not isinstance(results, list):
+            return
+
+        for result in results:
+            if isinstance(result, ToolResult) and len(result.content) > 50_000:
+                result.content = (
+                    result.content[:50_000]
+                    + f"\n\n[Truncated: result exceeded 50_000 characters]"
+                )
+
+
+class ToolResultsRender(Step):
+    """Render tool results via ctx.render.finish_tool()."""
+
+    def __init__(self) -> None:
+        super().__init__("tools.render", HookPhase.after_tool)
+
+    async def run(self, ctx: RunContext) -> None:
+        render = ctx.render
+        if render is None:
+            return
+
+        results = ctx.current_tool_results
+        if isinstance(results, list):
+            for result in results:
+                render.finish_tool(
+                    getattr(result, "call_id", ""),
+                    getattr(result, "content", str(result)),
+                )
+
+
 class ToolResultsCapture(Step):
     """Collect execution results into ctx.current_tool_results."""
 
     def __init__(self) -> None:
         super().__init__("tool_results.capture", HookPhase.after_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         return
 
 
@@ -25,7 +96,7 @@ class MessageCommitToolResults(Step):
     def __init__(self) -> None:
         super().__init__("message.commit_tool_results", HookPhase.after_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         results = ctx.current_tool_results
         if not results or not isinstance(results, list):
             return
@@ -71,7 +142,7 @@ class CheckpointRecordToolResultsCommitted(Step):
     def __init__(self) -> None:
         super().__init__("checkpoint.record_tool_results_committed", HookPhase.after_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
         if store is None:
             return

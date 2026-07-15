@@ -15,7 +15,7 @@ class MessageCommitAssistant(Step):
     def __init__(self) -> None:
         super().__init__("message.commit_assistant", HookPhase.after_model)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
             return
@@ -50,7 +50,7 @@ class UsageUpdate(Step):
     def __init__(self) -> None:
         super().__init__("usage.update", HookPhase.after_model)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
             return
@@ -65,7 +65,7 @@ class ResultDetectRouting(Step):
     def __init__(self) -> None:
         super().__init__("result.detect_routing", HookPhase.after_model)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
             return

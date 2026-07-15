@@ -14,7 +14,13 @@ from agent.steps.after_model import (
     UsageUpdate,
     ResultDetectRouting,
 )
-from agent.steps.after_tool import ToolResultsCapture, MessageCommitToolResults
+from agent.steps.after_tool import (
+    MessageCommitToolResults,
+    ResultLimitGuard,
+    ToolDoneLogging,
+    ToolResultsCapture,
+    ToolResultsRender,
+)
 from agent.steps.before_run import (
     RunStart,
     MessageCommitUser,
@@ -25,7 +31,11 @@ from agent.steps.before_model import (
     IterationCreate,
     ModelRequestCompose,
 )
-from agent.steps.before_tool import ToolCallsExtract
+from agent.steps.before_tool import (
+    ToolCallsExtract,
+    ToolsApproval,
+    ToolExecutionStart,
+)
 from agent.steps.registry import StepConfig, StepRegistry
 
 
@@ -48,10 +58,15 @@ def build_runner() -> AgentRunner:
 
     # ---- before_tool ----
     reg.register(ToolCallsExtract())
+    reg.register(ToolsApproval())
+    reg.register(ToolExecutionStart())
 
     # ---- after_tool ----
     reg.register(ToolResultsCapture())
+    reg.register(ToolDoneLogging())
+    reg.register(ResultLimitGuard())
     reg.register(MessageCommitToolResults())
+    reg.register(ToolResultsRender())
 
     # ---- after_agent ----
     reg.register(RunMarkTerminalState())

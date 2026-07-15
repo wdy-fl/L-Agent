@@ -16,7 +16,7 @@ class RunStart(Step):
     def __init__(self) -> None:
         super().__init__("run.create", HookPhase.before_agent)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
         if store is None:
             return
@@ -43,7 +43,7 @@ class MessageCommitUser(Step):
     def __init__(self) -> None:
         super().__init__("message.commit_user", HookPhase.before_agent)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         ctx.messages.append({"role": "user", "content": ctx.input})
         store = ctx.timeline_store
         if store is None:
@@ -69,7 +69,7 @@ class CheckpointCreateUserSnapshot(Step):
     def __init__(self) -> None:
         super().__init__("checkpoint.create_user_snapshot", HookPhase.before_agent)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         store = ctx.timeline_store
         if store is None:
             return

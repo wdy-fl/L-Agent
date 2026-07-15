@@ -12,7 +12,7 @@ class BudgetGuard(Step):
     def __init__(self) -> None:
         super().__init__("budget.guard", HookPhase.before_model)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         budget = ctx.budget
         if budget.consumed_iterations > budget.max_iterations:
             budget.exhausted = True
@@ -30,7 +30,7 @@ class IterationCreate(Step):
     def __init__(self) -> None:
         super().__init__("iteration.create", HookPhase.before_model)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         ctx.budget.consumed_iterations += 1
 
         return
@@ -41,7 +41,7 @@ class ModelRequestCompose(Step):
     def __init__(self) -> None:
         super().__init__("model_request.compose", HookPhase.before_model)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         ctx.current_model_request = ModelRequest(
             messages=ctx.messages,
             tools=ctx.available_tools,

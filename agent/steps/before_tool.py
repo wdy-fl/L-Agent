@@ -1,13 +1,102 @@
 from __future__ import annotations
 
 import json
+import time
+import uuid
 from typing import Any
 
 from agent.core.context import RunContext
 from agent.core.lifecycle import HookPhase
 from agent.llm.client import ModelResponse
 from agent.steps.base import Step
-from agent.tools.base import ToolCall
+from agent.timeline.models import Checkpoint, CheckpointType
+from agent.tools.base import ToolCall, ToolResult, ToolResultStatus
+
+
+class ToolsApproval(Step):
+    """Check always_confirm_tools, request user approval, and deny unapproved calls."""
+
+    def __init__(self) -> None:
+        super().__init__("tools.approval", HookPhase.before_tool)
+
+    async def run(self, ctx: RunContext) -> None:
+        calls = ctx.current_tool_calls
+        if not calls or not ctx.always_confirm_tools:
+            return
+
+        approved_calls: list[ToolCall] = []
+        for call in calls:
+            if call.error:
+                approved_calls.append(call)
+                continue
+            if call.tool_name not in ctx.always_confirm_tools:
+                approved_calls.append(call)
+                continue
+            risk_level = "high" if call.tool_name in ("terminal",) else "medium"
+            if ctx.request_approval is not None:
+                approved = await ctx.request_approval(
+                    call.tool_name, call.arguments, risk_level
+                )
+            else:
+                approved = False
+            if approved:
+                approved_calls.append(call)
+            else:
+                result = ToolResult(
+                    call_id=call.call_id,
+                    status=ToolResultStatus.denied,
+                    content=f"Tool '{call.tool_name}' was denied by user.",
+                )
+                if ctx.current_tool_results is None:
+                    ctx.current_tool_results = []
+                ctx.current_tool_results.append(result)
+
+        ctx.current_tool_calls = approved_calls
+
+
+class ToolExecutionStart(Step):
+    """Show tool spinner, record checkpoint, and log tool.start events."""
+
+    def __init__(self) -> None:
+        super().__init__("tools.execution_start", HookPhase.before_tool)
+
+    async def run(self, ctx: RunContext) -> None:
+        calls = ctx.current_tool_calls
+        if not calls:
+            return
+
+        # Show spinner for each tool call
+        render = ctx.render
+        for call in calls:
+            if render is not None:
+                render.show_tool_spinner(call.tool_name)
+
+        # Record checkpoint: tool_call started
+        store = ctx.timeline_store
+        if store is not None:
+            cursor = store.get_latest_sequence(ctx.branch_id)
+            cp = Checkpoint(
+                checkpoint_id=str(uuid.uuid4()),
+                session_id=ctx.session_id,
+                branch_id=ctx.branch_id,
+                run_id=ctx.run_id,
+                type=CheckpointType.runtime,
+                message_cursor=cursor,
+            )
+            store.create_checkpoint(cp)
+
+        # Record start timestamp for elapsed-time calculation in _execute_tool
+        ctx.tool_start_time = time.time()
+
+        # Log tool.start events
+        if ctx.logger is not None:
+            for tc in calls:
+                ctx.logger.log(
+                    event="tool.start",
+                    run_id=ctx.run_id,
+                    tool_name=tc.tool_name,
+                    arguments=tc.arguments,
+                )
 
 
 class ToolCallsExtract(Step):
@@ -17,7 +106,7 @@ class ToolCallsExtract(Step):
     def __init__(self) -> None:
         super().__init__("tool_calls.extract", HookPhase.before_tool)
 
-    def run(self, ctx: RunContext) -> None:
+    async def run(self, ctx: RunContext) -> None:
         resp = ctx.current_model_response
         if resp is None or not isinstance(resp, ModelResponse):
             return

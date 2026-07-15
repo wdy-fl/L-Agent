@@ -59,6 +59,7 @@ class RunContext:
     has_tool_calls: bool = False
     auto_approve_tools: set[str] = field(default_factory=set)
     always_confirm_tools: set[str] = field(default_factory=set)
+    tool_start_time: float = 0.0
 
     # --- budget ---
     budget: BudgetState = field(default_factory=BudgetState)
