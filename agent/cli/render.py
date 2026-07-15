@@ -20,6 +20,7 @@ class Renderer:
         self._reasoning_buffer: str = ""
         self._reasoning_live: Live | None = None
         self._reasoning_streamed: bool = False
+        self._tool_live: Live | None = None
 
     def stream_text(self, text: str) -> None:
         # First content chunk → finalise the reasoning phase so the thinking
@@ -69,25 +70,33 @@ class Renderer:
 
 
     def show_tool_spinner(self, tool_name: str) -> None:
-        self._console.print(
-            Spinner("dots", text=Text(f" Running {tool_name}...", style="dim")),
-            end="",
-        )
+        """Start an animated spinner that will be replaced by the result panel.
+
+        Uses a :class:`Live` region so the spinner and the subsequent result
+        Panel occupy the same screen real estate — no residual dead frames.
+        """
+        if self._tool_live is not None:
+            self._tool_live.stop()
+        spinner = Spinner("dots", text=Text(f" Running {tool_name}...", style="dim"))
+        self._tool_live = Live(spinner, console=self._console, refresh_per_second=10)
+        self._tool_live.start()
 
     def finish_tool(self, tool_name: str, result) -> None:
-        # Clear the spinner line: \r moves to column 0, spaces overwrite the
-        # spinner text, \r positions the cursor for the Panel that follows.
-        width = self._console.width or 80
-        self._console.print(f"\r{' ' * width}\r", end="")
         content = str(result) if result else ""
         if len(content) > 500:
             content = content[:500] + "..."
-        self._console.print(Panel(
+        panel = Panel(
             content,
             title=f"[bold green]✓[/bold green] {tool_name}",
             border_style="green",
             expand=False,
-        ))
+        )
+        if self._tool_live is not None:
+            self._tool_live.update(panel)
+            self._tool_live.stop()
+            self._tool_live = None
+        else:
+            self._console.print(panel)
 
     def show_error(self, ctx) -> None:
         """Display error info from the run context."""
