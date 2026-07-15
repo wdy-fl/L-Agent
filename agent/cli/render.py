@@ -106,6 +106,17 @@ class Renderer:
             f"[dim]── {iterations} iteration(s) · {tokens} tokens · {elapsed_s:.1f}s[/dim]"
         )
 
+    def show_banner(self) -> None:
+        """Print the welcome banner at session start."""
+        self._console.print()
+        self._console.print("[bold cyan]  L-Agent[/bold cyan] [dim]v0.1.0[/dim]")
+        self._console.print("[dim]  Type your message to chat, /help for commands, Ctrl+C to exit.[/dim]")
+        self._console.print()
+
+    def show_goodbye(self) -> None:
+        """Print the goodbye message on exit."""
+        self._console.print("[dim]Goodbye.[/dim]")
+
     def show_interrupted(self) -> None:
         self._console.print("[yellow]⚡ Run interrupted[/yellow]")
 

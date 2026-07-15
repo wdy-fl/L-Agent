@@ -88,10 +88,7 @@ class CLILoop:
         """Start the CLI session."""
         await self._init_agent()
 
-        self._console.print()
-        self._console.print("[bold cyan]  L-Agent[/bold cyan] [dim]v0.1.0[/dim]")
-        self._console.print("[dim]  Type your message to chat, /help for commands, Ctrl+C to exit.[/dim]")
-        self._console.print()
+        self._renderer.show_banner()
 
         # Esc 中断当前 agent 任务，回到输入提示符（不退出会话）。
         # 由 agent 运行循环检查 self._ctx.interrupted 标志来响应。
@@ -110,7 +107,7 @@ class CLILoop:
                 break
             except KeyboardInterrupt:
                 # Ctrl+C 直接退出整个 CLI 会话。
-                self._console.print("[dim]Goodbye.[/dim]")
+                self._renderer.show_goodbye()
                 break
 
             if not user_input.strip():
