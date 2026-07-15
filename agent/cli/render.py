@@ -42,7 +42,7 @@ class Renderer:
         self._reasoning_buffer += text
         self._reasoning_streamed = True
         if self._reasoning_live is None:
-            self._reasoning_live = Live(console=self._console, refresh_per_second=10)
+            self._reasoning_live = Live(console=self._console, refresh_per_second=10, transient=True)
             self._reasoning_live.start()
         self._reasoning_live.update(Text(self._reasoning_buffer, style="dim italic"))
 
@@ -75,6 +75,10 @@ class Renderer:
         )
 
     def finish_tool(self, tool_name: str, result) -> None:
+        # Clear the spinner line: \r moves to column 0, spaces overwrite the
+        # spinner text, \r positions the cursor for the Panel that follows.
+        width = self._console.width or 80
+        self._console.print(f"\r{' ' * width}\r", end="")
         content = str(result) if result else ""
         if len(content) > 500:
             content = content[:500] + "..."

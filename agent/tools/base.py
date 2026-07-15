@@ -36,6 +36,7 @@ class ToolResult:
     """Result of a tool execution."""
 
     call_id: str
+    tool_name: str = ""
     status: ToolResultStatus = ToolResultStatus.success
     content: str = ""
 

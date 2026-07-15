@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from agent.llm.client import OpenAICompatibleClient
     from agent.logging.logger import AgentLogger
     from agent.timeline.store import TimelineStore
+    from agent.tools.base import ToolCall, ToolResult
     from agent.tools.dispatcher import ToolDispatcher
 
 
@@ -55,8 +56,8 @@ class RunContext:
 
     # --- tool context---
     available_tools: list[dict[str, Any]] = field(default_factory=list)
-    current_tool_calls: Any = None
-    current_tool_results: Any = None
+    current_tool_calls: list[ToolCall] | None = None
+    current_tool_results: list[ToolResult] | None = None
     has_tool_calls: bool = False
     auto_approve_tools: set[str] = field(default_factory=set)
     always_confirm_tools: set[str] = field(default_factory=set)

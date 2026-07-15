@@ -72,12 +72,11 @@ class ToolResultsRender(Step):
             return
 
         results = ctx.current_tool_results
-        if isinstance(results, list):
-            for result in results:
-                renderer.finish_tool(
-                    getattr(result, "call_id", ""),
-                    getattr(result, "content", str(result)),
-                )
+        for result in results:
+            renderer.finish_tool(
+                getattr(result, "tool_name", ""),
+                getattr(result, "content", str(result)),
+            )
 
 
 class ToolResultsCapture(Step):

@@ -21,6 +21,7 @@ class ToolDispatcher:
         if call.error:
             return ToolResult(
                 call_id=call.call_id,
+                tool_name=call.tool_name,
                 status=ToolResultStatus.error,
                 content=call.error,
             )
@@ -29,6 +30,7 @@ class ToolDispatcher:
         if spec is None:
             return ToolResult(
                 call_id=call.call_id,
+                tool_name=call.tool_name,
                 status=ToolResultStatus.error,
                 content=f"Tool not found: {call.tool_name}",
             )
@@ -38,12 +40,14 @@ class ToolDispatcher:
             content = str(result) if result is not None else ""
             return ToolResult(
                 call_id=call.call_id,
+                tool_name=call.tool_name,
                 status=ToolResultStatus.success,
                 content=content,
             )
         except Exception as exc:
             return ToolResult(
                 call_id=call.call_id,
+                tool_name=call.tool_name,
                 status=ToolResultStatus.error,
                 content=f"Tool execution error: {type(exc).__name__}: {exc}",
             )
