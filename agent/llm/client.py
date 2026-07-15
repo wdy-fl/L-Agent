@@ -108,20 +108,13 @@ class OpenAICompatibleClient(LLMClient):
 
         tool_calls = [v for _, v in sorted(tool_calls_raw.items())] if tool_calls_raw else []
 
-        if tool_calls and finish_reason != "tool_calls":
-            finish_reason = "tool_calls"
-
-        response = ModelResponse(
+        response = self._assemble_response(
             content="".join(content_parts),
             reasoning_content="".join(reasoning_parts),
             tool_calls=tool_calls,
-            usage=Usage(
-                input_tokens=usage_data.get("prompt_tokens", 0),
-                output_tokens=usage_data.get("completion_tokens", 0),
-            ),
+            usage_data=usage_data,
             finish_reason=finish_reason,
         )
-
         response.elapsed_ms = round((time.time() - t0) * 1000, 1)
         yield response
 
@@ -141,6 +134,28 @@ class OpenAICompatibleClient(LLMClient):
         if request.tools:
             payload["tools"] = request.tools
         return payload
+
+    @staticmethod
+    def _assemble_response(
+        content: str,
+        reasoning_content: str,
+        tool_calls: list[dict],
+        usage_data: dict[str, Any],
+        finish_reason: str,
+    ) -> ModelResponse:
+        usage = Usage(
+            input_tokens=usage_data.get("prompt_tokens", 0),
+            output_tokens=usage_data.get("completion_tokens", 0),
+        )
+        if tool_calls and finish_reason != "tool_calls":
+            finish_reason = "tool_calls"
+        return ModelResponse(
+            content=content,
+            reasoning_content=reasoning_content,
+            tool_calls=tool_calls,
+            usage=usage,
+            finish_reason=finish_reason,
+        )
 
     def _parse_response(self, data: dict[str, Any]) -> ModelResponse:
         choice = data["choices"][0]
@@ -163,22 +178,10 @@ class OpenAICompatibleClient(LLMClient):
                 for tc in raw_calls
             ]
 
-        usage_data = data.get("usage", {})
-        usage = Usage(
-            input_tokens=usage_data.get("prompt_tokens", 0),
-            output_tokens=usage_data.get("completion_tokens", 0),
-        )
-
-        finish_reason = choice.get("finish_reason", "stop")
-        if finish_reason == "tool_calls":
-            pass
-        elif tool_calls:
-            finish_reason = "tool_calls"
-
-        return ModelResponse(
+        return self._assemble_response(
             content=content,
             reasoning_content=reasoning_content,
             tool_calls=tool_calls,
-            usage=usage,
-            finish_reason=finish_reason,
+            usage_data=data.get("usage", {}),
+            finish_reason=choice.get("finish_reason", "stop"),
         )
