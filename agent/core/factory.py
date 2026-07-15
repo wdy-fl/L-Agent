@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from agent.core.runner import AgentRunner
 from agent.steps.after_run import (
+    DateContextCleanup,
     RunFinish,
     RunMarkTerminalState,
     RunStatusLogging,
@@ -26,6 +27,7 @@ from agent.steps.before_run import (
     RunStart,
     MessageCommitUser,
     CheckpointCreateUserSnapshot,
+    DateContextInject,
 )
 from agent.steps.before_model import (
     BudgetGuard,
@@ -45,6 +47,7 @@ def build_runner() -> AgentRunner:
     reg.register(RunStart())
     reg.register(MessageCommitUser())
     reg.register(CheckpointCreateUserSnapshot())
+    reg.register(DateContextInject())
 
     # ---- before_model ----
     reg.register(BudgetGuard())
@@ -68,6 +71,7 @@ def build_runner() -> AgentRunner:
     reg.register(ToolResultsRender())
 
     # ---- after_run ----
+    reg.register(DateContextCleanup())
     reg.register(RunStatusLogging())
     reg.register(RunMarkTerminalState())
     reg.register(CheckpointRecordRunTerminalState())
