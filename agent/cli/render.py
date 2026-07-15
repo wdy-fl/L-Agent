@@ -120,3 +120,70 @@ class Renderer:
     def show_interrupted(self) -> None:
         self._console.print("[yellow]⚡ Run interrupted[/yellow]")
 
+    # ── history replay ──────────────────────────────────────────────
+
+    def replay_history(self, messages: list) -> None:
+        """Render a conversation history loaded by /resume or /list.
+
+        Skips the initial ``system`` message (the agent prompt); renders every
+        user / assistant / tool message in sequence so the user can see what
+        was said before.
+        """
+        if not messages:
+            return
+
+        self._console.print()
+        self._console.print("[dim]── History replay ──[/dim]")
+        self._console.print()
+
+        for m in messages:
+            role = m.role if hasattr(m, "role") else m.get("role", "")
+            content = m.content if hasattr(m, "content") else m.get("content", "")
+            tool_calls = m.tool_calls if hasattr(m, "tool_calls") else m.get("tool_calls", [])
+            tool_call_id = m.tool_call_id if hasattr(m, "tool_call_id") else m.get("tool_call_id", "")
+
+            if role == "system":
+                continue
+
+            if role == "user":
+                self._console.print(f"[bold cyan]❯[/bold cyan] {content}")
+                self._console.print()
+
+            elif role == "assistant":
+                if content:
+                    self._console.print(Markdown(content))
+                if tool_calls:
+                    for tc in tool_calls:
+                        func = tc.get("function", {})
+                        name = func.get("name", "?")
+                        args_str = func.get("arguments", "{}")
+                        self._console.print(
+                            f"  [dim]🔧 [bold]{name}[/bold][/dim]"
+                        )
+                        try:
+                            import json as _json
+                            args_obj = _json.loads(args_str) if isinstance(args_str, str) else args_str
+                            for k, v in args_obj.items():
+                                val_str = str(v)
+                                if len(val_str) > 80:
+                                    val_str = val_str[:80] + "..."
+                                self._console.print(f"    [dim]{k}:[/dim] {val_str}")
+                        except Exception:
+                            if args_str:
+                                self._console.print(f"    [dim]{args_str}[/dim]")
+                self._console.print()
+
+            elif role == "tool":
+                truncated = content if len(content) <= 300 else content[:300] + "..."
+                self._console.print(
+                    Panel(
+                        truncated,
+                        title=f"[dim]tool ⟵ {tool_call_id[:20]}...[/dim]",
+                        border_style="dim",
+                        expand=False,
+                    )
+                )
+
+        self._console.print("[dim]── End of history ──[/dim]")
+        self._console.print()
+

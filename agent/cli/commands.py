@@ -138,6 +138,8 @@ class CommandDispatcher:
             max_tokens=ctx.budget.max_tokens,
         )
 
+        if ctx.renderer:
+            ctx.renderer.replay_history(result.messages)
         self._console.print(f"[green]Resumed session {selected_session_id[:8]}...[/green]")
 
     async def _cmd_resume(self, arg: str, ctx: RunContext) -> None:
@@ -154,6 +156,8 @@ class CommandDispatcher:
                 max_tokens=ctx.budget.max_tokens,
             )
 
+            if ctx.renderer:
+                ctx.renderer.replay_history(result.messages)
             self._console.print(f"[green]Resumed session {arg[:8]}...[/green]")
             return
         await self._cmd_list("", ctx)
