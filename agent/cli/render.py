@@ -61,7 +61,6 @@ class Renderer:
         self._reasoning_buffer = ""
 
     def finish_stream(self) -> None:
-        self._finalize_reasoning()
         if self._live is not None:
             self._live.update(Markdown(self._stream_buffer))
             self._live.stop()
