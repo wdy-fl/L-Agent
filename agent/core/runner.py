@@ -52,6 +52,14 @@ class AgentRunner:
 
             response = None
             async for item in ctx.client.stream(ctx.current_model_request):
+                if ctx.interrupted:
+                    # 流式阶段是天然的安全中断点：assistant 消息要等到
+                    # after_model 的 MessageCommitAssistant 才提交，此刻
+                    # 中断只会丢弃未完成的响应，不会产生孤儿 tool_call。
+                    # 收尾 Live region 后直接结束本轮循环，由 run() 的
+                    # interrupted 分支标记状态、after_run 阶段写收尾。
+                    renderer.finish_stream()
+                    return
                 if isinstance(item, StreamDelta):
                     if item.kind == "reasoning":
                         renderer.stream_reasoning(item.text)
