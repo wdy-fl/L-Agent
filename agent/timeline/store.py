@@ -67,6 +67,16 @@ class TimelineStore(ABC):
     @abstractmethod
     def get_latest_sequence(self, branch_id: str) -> int: ...
 
+    @abstractmethod
+    def truncate_branch(self, branch_id: str, after_sequence: int) -> None:
+        """Delete messages with sequence > after_sequence and checkpoints with
+        message_cursor > after_sequence on the given branch.
+
+        Used by resume to physically discard the partial records of an
+        interrupted/failed run that were never reflected in resume_head.
+        Parent-branch records are untouched.
+        """
+
     # --- Checkpoint ---
     @abstractmethod
     def create_checkpoint(self, checkpoint: Checkpoint) -> None: ...

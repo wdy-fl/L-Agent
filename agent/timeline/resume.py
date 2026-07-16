@@ -45,16 +45,26 @@ def resume(store: TimelineStore, session_id: str) -> ResumeResult:
 
     interrupted_info: str | None = None
 
+    latest_run = store.get_latest_run_by_branch(branch.branch_id)
+
     if branch.resume_head:
         checkpoint = _get_checkpoint(store, branch.branch_id, branch.resume_head)
         if checkpoint:
+            # 若最近一次 run 以 interrupted/failed 结束，它在 resume_head 之外
+            # 留下的半截消息（user、assistant tool_call、合成 tool 结果）平时
+            # 虽不被加载，但一旦后续某次 run 正常完成、resume_head 推进到它们
+            # 之后，就会被夹回上下文中间。这里物理删除它们，让 resume 真正
+            # 回滚到最后一次正常完成点。
+            if latest_run and latest_run.status in (RunStatus.interrupted, RunStatus.failed):
+                live_tip = store.get_latest_sequence(branch.branch_id)
+                if live_tip > checkpoint.message_cursor:
+                    store.truncate_branch(branch.branch_id, checkpoint.message_cursor)
             messages = collect_branch_messages(store, branch, up_to_cursor=checkpoint.message_cursor)
         else:
             messages = collect_branch_messages(store, branch)
     else:
         messages = collect_branch_messages(store, branch)
 
-    latest_run = store.get_latest_run_by_branch(branch.branch_id)
     if latest_run and latest_run.status == RunStatus.interrupted:
         interrupted_info = f"上次运行中断（run_id={latest_run.run_id}）"
 

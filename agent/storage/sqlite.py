@@ -190,6 +190,18 @@ class SQLiteTimelineStore(TimelineStore):
         val = row["max_seq"] if row else None
         return val if val is not None else -1
 
+    def truncate_branch(self, branch_id: str, after_sequence: int) -> None:
+        conn = self._conn
+        conn.execute(
+            "DELETE FROM messages WHERE branch_id=? AND sequence>?",
+            (branch_id, after_sequence),
+        )
+        conn.execute(
+            "DELETE FROM checkpoints WHERE branch_id=? AND message_cursor>?",
+            (branch_id, after_sequence),
+        )
+        conn.commit()
+
     # --- Checkpoint ---
     def create_checkpoint(self, checkpoint: Checkpoint) -> None:
         self._conn.execute(
