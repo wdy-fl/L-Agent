@@ -68,6 +68,7 @@ class CommandDispatcher:
             "/rewind": self._cmd_rewind,
             "/status": self._cmd_status,
             "/title": self._cmd_title,
+            "/delete": self._cmd_delete,
             "/help": self._cmd_help,
         }
 
@@ -232,6 +233,44 @@ class CommandDispatcher:
         self._store.update_session(session)
         self._console.print(f"[green]Session renamed to: {session.title}[/green]")
 
+    async def _cmd_delete(self, arg: str, ctx: RunContext) -> None:
+        sessions = self._store.list_sessions()
+        if not sessions:
+            self._console.print("[dim]No sessions found.[/dim]")
+            return
+
+        if arg:
+            target_id = next((s.session_id for s in sessions if s.session_id == arg or s.session_id.startswith(arg)), None)
+            if target_id is None:
+                self._console.print(f"[red]No session matching: {arg}[/red]")
+                return
+        else:
+            options = [f"{s.session_id[:8]}... ({s.title or 'untitled'})" for s in sessions]
+            choice = await select_prompt(options, title="Select session to delete")
+            if choice < 0:
+                return
+            target_id = sessions[choice].session_id
+
+        if target_id == ctx.session_id:
+            self._console.print(
+                "[red]Cannot delete the active session. Use /new or /resume to switch first.[/red]"
+            )
+            return
+
+        session = self._store.get_session(target_id)
+        label = f"{target_id[:8]}... ({session.title or 'untitled'})" if session else f"{target_id[:8]}..."
+        confirm = await select_prompt(["No, cancel", "Yes, delete"], title=f"Delete session {label}?")
+        if confirm != 1:
+            self._console.print("[dim]Cancelled.[/dim]")
+            return
+
+        deleted = self._store.delete_session(target_id)
+        if not deleted:
+            self._console.print(f"[red]Session not found: {target_id[:8]}...[/red]")
+            return
+
+        self._console.print(f"[green]Deleted session {target_id[:8]}...[/green]")
+
     async def _cmd_help(self, arg: str, ctx: RunContext) -> None:
         self._console.print("[bold]Available commands:[/bold]")
         self._console.print("  /new      Create a new session")
@@ -239,5 +278,6 @@ class CommandDispatcher:
         self._console.print("  /resume   Resume a session by ID")
         self._console.print("  /rewind   Rewind to a checkpoint")
         self._console.print("  /title    Rename current session")
+        self._console.print("  /delete   Delete a session")
         self._console.print("  /status   Show current session status")
         self._console.print("  /help     Show this help message")

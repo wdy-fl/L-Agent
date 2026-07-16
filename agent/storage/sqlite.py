@@ -59,6 +59,18 @@ class SQLiteTimelineStore(TimelineStore):
         )
         self._conn.commit()
 
+    def delete_session(self, session_id: str) -> bool:
+        if self.get_session(session_id) is None:
+            return False
+        conn = self._conn
+        conn.execute("DELETE FROM messages WHERE session_id=?", (session_id,))
+        conn.execute("DELETE FROM checkpoints WHERE session_id=?", (session_id,))
+        conn.execute("DELETE FROM agent_runs WHERE session_id=?", (session_id,))
+        conn.execute("DELETE FROM branches WHERE session_id=?", (session_id,))
+        conn.execute("DELETE FROM sessions WHERE session_id=?", (session_id,))
+        conn.commit()
+        return True
+
     def list_sessions(self) -> list[Session]:
         rows = self._conn.execute("SELECT * FROM sessions ORDER BY updated_at DESC").fetchall()
         return [

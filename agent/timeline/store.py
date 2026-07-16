@@ -30,6 +30,13 @@ class TimelineStore(ABC):
     def find_empty_session(self) -> Session | None:
         """Return a session that has only system messages (no actual conversation), or None."""
 
+    @abstractmethod
+    def delete_session(self, session_id: str) -> bool:
+        """Delete a session and all of its branches, runs, messages, and checkpoints.
+
+        Returns True if a session was deleted, False if no such session exists.
+        """
+
     # --- Branch ---
     @abstractmethod
     def create_branch(self, branch: Branch) -> None: ...
