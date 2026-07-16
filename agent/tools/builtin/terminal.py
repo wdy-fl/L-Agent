@@ -8,6 +8,9 @@ from agent.tools.base import ToolSpec
 
 
 def _terminal_handler(command: str, timeout: int = 120, cwd: str | None = None) -> str:
+    # stdin=DEVNULL prevents interactive commands (e.g. cmd's `date` builtin on
+    # Windows, which prompts for a new date) from blocking forever on inherited
+    # terminal input — they read EOF and exit instead of hanging until timeout.
     try:
         result = subprocess.run(
             command,
@@ -16,6 +19,7 @@ def _terminal_handler(command: str, timeout: int = 120, cwd: str | None = None) 
             text=True,
             timeout=timeout,
             cwd=cwd,
+            stdin=subprocess.DEVNULL,
         )
         parts: list[str] = []
         if result.stdout:

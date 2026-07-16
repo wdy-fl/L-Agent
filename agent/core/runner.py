@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import traceback
 import uuid
 from agent.core.context import RunContext
@@ -91,7 +92,12 @@ class AgentRunner:
             return
 
         try:
-            results = ctx.dispatcher.dispatch(ctx.current_tool_calls or [])
+            # Run in a worker thread so blocking tool handlers (e.g. terminal's
+            # subprocess.run) don't freeze the asyncio event loop — the spinner
+            # stays animated and the UI stays responsive while tools execute.
+            results = await asyncio.to_thread(
+                ctx.dispatcher.dispatch, ctx.current_tool_calls or []
+            )
             ctx.current_tool_results = results
             self._record_checkpoint(ActionName.tool_call, "completed", ctx)
         except Exception:
