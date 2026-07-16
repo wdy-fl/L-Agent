@@ -60,7 +60,7 @@ class ResultLimitGuard(Step):
 
 
 class ToolResultsRender(Step):
-    """Render tool results via ctx.renderer.finish_tool()."""
+    """Render tool results via ctx.renderer.finish_tools()."""
 
     def __init__(self) -> None:
         super().__init__("tools.render", HookPhase.after_tool)
@@ -71,11 +71,17 @@ class ToolResultsRender(Step):
             return
 
         results = ctx.current_tool_results
-        for result in results:
-            renderer.finish_tool(
-                getattr(result, "tool_name", ""),
-                getattr(result, "content", str(result)),
-            )
+        if not results:
+            return
+
+        # Hand all results to the renderer at once so they stack into one
+        # Live region — rendering per-result would overwrite and leave only
+        # the last panel visible (see finish_tools).
+        pairs = [
+            (getattr(r, "tool_name", ""), getattr(r, "content", str(r)))
+            for r in results
+        ]
+        renderer.finish_tools(pairs)
 
 
 class ToolResultsCapture(Step):

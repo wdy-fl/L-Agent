@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -73,34 +73,50 @@ class Renderer:
         self._stream_buffer = ""
 
 
-    def show_tool_spinner(self, tool_name: str) -> None:
-        """Start an animated spinner that will be replaced by the result panel.
+    def show_tool_spinner(self, tool_names: list[str]) -> None:
+        """Start a single animated spinner covering all tool calls in this batch.
 
-        Uses a :class:`Live` region so the spinner and the subsequent result
-        Panel occupy the same screen real estate — no residual dead frames.
+        When a model response carries multiple ``tool_calls``, they share one
+        :class:`Live` region so earlier spinners aren't overwritten by later
+        ones — calling this per tool in a loop would leave only the last
+        spinner visible. ``tool_names`` is joined into one line, e.g.
+        ``Running web_search, read_file...``.
         """
         if self._tool_live is not None:
             self._tool_live.stop()
-        spinner = Spinner("dots", text=Text(f" Running {tool_name}...", style="dim"))
+        names = ", ".join(tool_names)
+        spinner = Spinner("dots", text=Text(f" Running {names}...", style="dim"))
         self._tool_live = Live(spinner, console=self._console, refresh_per_second=10)
         self._tool_live.start()
 
-    def finish_tool(self, tool_name: str, result) -> None:
+    def finish_tools(self, results: list[tuple[str, object]]) -> None:
+        """Replace the spinner with all tool result panels at once.
+
+        ``results`` is a list of ``(tool_name, content)`` pairs. Panels are
+        stacked via :class:`~rich.console.Group` so every result stays
+        visible — updating the same Live region once per tool (the old
+        single-tool ``finish_tool`` loop) would leave only the last panel.
+        """
+        panels = [self._build_tool_panel(name, content) for name, content in results]
+        renderable = panels[0] if len(panels) == 1 else Group(*panels)
+        if self._tool_live is not None:
+            self._tool_live.update(renderable)
+            self._tool_live.stop()
+            self._tool_live = None
+        else:
+            self._console.print(renderable)
+
+    @staticmethod
+    def _build_tool_panel(tool_name: str, result) -> Panel:
         content = str(result) if result else ""
         if len(content) > 500:
             content = content[:500] + "..."
-        panel = Panel(
+        return Panel(
             content,
             title=f"[bold green]✓[/bold green] {tool_name}",
             border_style="green",
             expand=False,
         )
-        if self._tool_live is not None:
-            self._tool_live.update(panel)
-            self._tool_live.stop()
-            self._tool_live = None
-        else:
-            self._console.print(panel)
 
     def show_error(self, ctx) -> None:
         """Display error info from the run context."""
