@@ -46,6 +46,8 @@ async def select_prompt(options: list[str], title: str = "", highlight_index: in
                 lines.append(("bold fg:cyan", f"  ❯ {opt}\n"))
             else:
                 lines.append(("", f"    {opt}\n"))
+        lines.append(("", "\n"))
+        lines.append(("dim", "  ↑/↓ select · Enter confirm · Esc cancel\n"))
         return FormattedText(lines)
 
     session: PromptSession = PromptSession(key_bindings=kb)

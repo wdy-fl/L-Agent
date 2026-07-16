@@ -143,6 +143,7 @@ class CommandDispatcher:
 
         choice = await select_prompt(options, title="Select session")
         if choice < 0:
+            self._console.print("[dim]Cancelled.[/dim]")
             return
 
         selected_session_id = session_ids[choice]
@@ -189,6 +190,7 @@ class CommandDispatcher:
         options = [f"#{i+1}: {cp.checkpoint_id[:8]} (seq {cp.message_cursor})" for i, cp in enumerate(user_snapshots)]
         choice = await select_prompt(options, title="Select rewind point")
         if choice < 0:
+            self._console.print("[dim]Cancelled.[/dim]")
             return
 
         selected_cp = user_snapshots[choice]
@@ -248,6 +250,7 @@ class CommandDispatcher:
             options = [f"{s.session_id[:8]}... ({s.title or 'untitled'})" for s in sessions]
             choice = await select_prompt(options, title="Select session to delete")
             if choice < 0:
+                self._console.print("[dim]Cancelled.[/dim]")
                 return
             target_id = sessions[choice].session_id
 
