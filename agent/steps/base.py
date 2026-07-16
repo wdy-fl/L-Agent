@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from agent.core.context import RunContext
+if TYPE_CHECKING:
+    from agent.core.context import RunContext
+
 from agent.core.lifecycle import HookPhase
 
 

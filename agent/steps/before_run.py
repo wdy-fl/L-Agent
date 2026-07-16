@@ -64,6 +64,25 @@ class MessageCommitUser(Step):
         return
 
 
+DATE_CONTEXT_MARKER = "[DATE_CONTEXT]"
+
+
+class DateContextInject(Step):
+    """在用户消息后注入当前时间上下文（不持久化到数据库，run 结束时清理）。"""
+
+    def __init__(self) -> None:
+        super().__init__("date_context.inject", HookPhase.before_run)
+
+    async def run(self, ctx: RunContext) -> None:
+        from datetime import datetime
+
+        now_str = datetime.now().strftime("%Y-%m-%d %A %H:%M:%S")
+        ctx.messages.append({
+            "role": "system",
+            "content": f"{DATE_CONTEXT_MARKER} 当前时间: {now_str}",
+        })
+
+
 class CheckpointCreateUserSnapshot(Step):
     """Create user_snapshot checkpoint after committing user message."""
 

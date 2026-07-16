@@ -9,6 +9,26 @@ from agent.steps.base import Step
 from agent.timeline.models import Checkpoint, CheckpointType, RunStatus
 
 
+from agent.steps.before_run import DATE_CONTEXT_MARKER
+
+
+class DateContextCleanup(Step):
+    """移除 before_run 注入的临时时间消息。"""
+
+    def __init__(self) -> None:
+        super().__init__("date_context.cleanup", HookPhase.after_run)
+
+    async def run(self, ctx: RunContext) -> None:
+        ctx.messages = [
+            m for m in ctx.messages
+            if not (
+                isinstance(m, dict)
+                and m.get("role") == "system"
+                and DATE_CONTEXT_MARKER in str(m.get("content", ""))
+            )
+        ]
+
+
 class RunFinish(Step):
     """Log run.done and record elapsed time."""
 
