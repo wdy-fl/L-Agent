@@ -26,15 +26,16 @@ class AgentRunner:
                 ctx.status = "exhausted"
             else:
                 ctx.status = "completed"
-        except Exception as exc:
+        except BaseException as exc:
+            # 用 BaseException 而非 Exception：
+            # 因为 KeyboardInterrupt / SystemExit
+            # 也要走错误处理路径，确保 _repair_orphan_tool_calls 能为
+            # 中止时遗留的孤儿 tool_call 补全结果，否则下次 resume 会因
+            # "tool_calls 缺少 tool 消息" 被 API 拒绝。
             ctx.status = "error"
             ctx.error_type = type(exc).__name__
             ctx.error_message = str(exc)
             ctx.error_traceback = traceback.format_exc()
-            # 如果运行在 after_model 提交了 tool_call 批次之后、after_tool
-            # 提交其结果之前中止，就会产生孤儿 tool_call。为这些孤儿
-            # tool_call 合成错误结果，避免下一轮的模型请求因
-            # "tool_calls 缺少 tool 消息" 而被拒绝。
             self._repair_orphan_tool_calls(ctx)
         finally:
             await self._run_phase(HookPhase.after_run, ctx)
